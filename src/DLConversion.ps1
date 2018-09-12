@@ -17,6 +17,7 @@
 
 
 .SYNOPSIS
+
 This script is designed to assist users in migrating distributon lists to Office 365.
 	  
 ************************************************************************************************
