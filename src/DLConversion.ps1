@@ -76,6 +76,11 @@ Version:        1.0
 Author:         Timothy J. McMichael
 Creation Date:  September 5th, 2018
 Purpose/Change: Initial script development
+
+Version:        1.1
+Author:         Timothy J. McMichael
+Change Date:    September 24th, 2018
+Purpose/Change: Updated group creation function to allow user override through parameter.  This allows the user to override if the group is provisioned as security or distribution regardless of on-premises representation.
   
 .EXAMPLE
 
@@ -92,7 +97,10 @@ Param (
     [Parameter(Mandatory=$True,Position=2)]
     [boolean]$ignoreInvalidDLMember=$FALSE,
     [Parameter(Mandatory=$True,Position=3)]
-	[boolean]$ignoreInvalidManagedByMember=$FALSE
+	[boolean]$ignoreInvalidManagedByMember=$FALSE,
+	[Parameter(Mandatory=$FALSE,Position=4)] #Added v1.1
+	[ValidateSet("Security","Distribution",$NULL)] #Added v1.1
+	[string]$groupTypeOverride=$NULL #Added v1.1
 )
 
 #---------------------------------------------------------[Initialisations]--------------------------------------------------------
@@ -2507,7 +2515,21 @@ Function createOffice365DistributionList
 
 		Write-LogInfo -LogPath $script:sLogFile -Message 'This function creates the cloud DL with the minimum settings...' -toscreen
 
-		if ( $script:onpremisesdlConfiguration.GroupType -eq "Universal, SecurityEnabled" )
+		<#============
+			Added v1.1
+		============#>
+		if ( $groupTypeOverride -eq "Security" )
+		{
+			$functionGroupType="Security"
+		}
+		elseif ( $groupTypeOverride -eq "Distribution" )
+		{
+			$functionGroupType="Distribution"
+		}
+		<#============
+			End added v1.1
+		============#>
+		elseif ( $script:onpremisesdlConfiguration.GroupType -eq "Universal, SecurityEnabled" )
 		{
 			$functionGroupType="Security"
 		}
