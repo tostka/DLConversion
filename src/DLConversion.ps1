@@ -81,10 +81,27 @@ Version:        1.1
 Author:         Timothy J. McMichael
 Change Date:    September 24th, 2018
 Purpose/Change: Updated group creation function to allow user override through parameter.  This allows the user to override if the group is provisioned as security or distribution regardless of on-premises representation.
+
+Version:        1.2
+Author:         Timothy J. McMichael
+Change Date:    September 25th, 2018
+Purpose/Change: Implemented new parameter to allow the group to be converted to a mail enabled contact.  During testing of these changes discovered that a common scenario was not accounted for.  It is possible on the multi-valued attributes that they coudl be set to the same group being migrated.   For example group MIGRATETEST only accepts messages from MIGRATETEST.
+In our testing code we tested to see if any groups on these attributes were already migrated - and of course the group we're migrating has not yet been migrated.
+
+Version:		1.3
+Author:			Timothy J. McMichael
+Change Date:	November 4th, 2018
+Purpose/Change:	Implemented some code changes to address some issues.  The first issue that was discovered came with the choice to convert the on premises DL to a mail enabled contacts.  If the group on prmeises was a security group...
+remove-distributionGroup is unable to remove the group unless the person executing the script was also a manager of the group.  The code was changed to implement the -bypassSecurityGroupManagerCheck which allows the executor to remove the DL.
+The script also when provisioning the mail enabled contact used to mirror as many of the DL attributes as possible.  For example, accept messages from / reject messages from etc.  When these attribute were mirrored this was fine...
+Until it was realized that they could adjust in the service and there was no way to mirror them back to the contact.  It made more sense to create the contact with the simple attributes - and let the message move onto the service - 
+where further decisions to implement accept / reject / grant etc could be evaluated and would then be managed and up to date.  The last change taken was to adjust the timing of creating the mail enabled contact.
+In testing with a multi-DC environment we discovered that between deleting the DL and creating the contact sometimes the AD cache was not updated - and reuslted in an error provisining the contact that SMTP addresses exist.
+Reused the one minute timout logic + dc replication between deleting the DL <and> provisioning the contact which corrected this issue.
   
 .EXAMPLE
 
-DLConversion -dlToConvert dl@domain.com -ignoreInvalidDLMembers:$TRUE -ignoreInvalidManagedByMembers:$TRUE
+DLConversion -dlToConvert dl@domain.com -ignoreInvalidDLMembers:$TRUE -ignoreInvalidManagedByMembers:$TRUE -groupTypeOverride "Security" -convertToContact:$TRUE
 #>
 
 #---------------------------------------------------------[Script Parameters]------------------------------------------------------
@@ -98,9 +115,11 @@ Param (
     [boolean]$ignoreInvalidDLMember=$FALSE,
     [Parameter(Mandatory=$True,Position=3)]
 	[boolean]$ignoreInvalidManagedByMember=$FALSE,
-	[Parameter(Mandatory=$FALSE,Position=4)] #Added v1.1
-	[ValidateSet("Security","Distribution",$NULL)] #Added v1.1
-	[string]$groupTypeOverride=$NULL #Added v1.1
+	[Parameter(Mandatory=$FALSE,Position=4)]
+	[ValidateSet("Security","Distribution",$NULL)]
+	[string]$groupTypeOverride=$NULL,
+	[Parameter(Mandatory=$FALSE,Position=5)]
+	[boolean]$convertToContact=$FALSE
 )
 
 #---------------------------------------------------------[Initialisations]--------------------------------------------------------
@@ -113,7 +132,7 @@ Import-Module PSLogging
 #----------------------------------------------------------[Declarations]----------------------------------------------------------
 
 #Script Version
-$sScriptVersion = "1.0"
+$sScriptVersion = "1.2"
 
 #Log File Info
 <###ADMIN###>$script:sLogPath = "C:\Scripts\"
@@ -161,6 +180,7 @@ $script:newOffice365DLConfigurationMembership = $NULL
 [array]$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers = @() #Array of psObjects that represent reject messages only from senders or members membership.
 [array]$script:onPremsiesDLBypassModerationFromSendersOrMembers = @() #Array of psObjects that represent bypass moderation only from senders or members membership.
 $script:newOffice365DLConfiguration=$NULL
+$script:x500Address=$NULL
 
 #Establish script variables for active directory operations.
 
@@ -462,6 +482,67 @@ Function removeOffice365PowerShellSession
 <#
 *******************************************************************************************************
 
+Function removeOffice365PowerShellSession
+
+.DESCRIPTION
+
+Removes only the powershell session associated with On-Premises.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function removeOnPremisesPowershellSession
+{
+	Param ()
+
+	Begin 
+	{
+		Write-LogInfo -LogPath $script:sLogFile -Message 'This function removes the On-Premsies powershell sessions....' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+			remove-pssession $script:onPremisesPowerShellSession
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'All powershell sessions have been cleaned up successfully.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message "The powershell sessions could not be cleared - manual removal before restarting required" -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
 Function refreshOffice365PowerShellSession
 
 .DESCRIPTION
@@ -496,6 +577,60 @@ Function refreshOffice365PowerShellSession
         removeOffice365PowerShellSession  #Removes the Office 365 powershell session.
         createOffice365PowershellSession  #Creates the Office 365 powershell session.
         importOffice365PowershellSession  #Imports the Office 365 powershell session.
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'All Office 365 powershell sessions have been refreshed.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message "All Office 365 powershell sessions have not been refreshed." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function refreshOffice365PowerShellSession
+
+.DESCRIPTION
+
+Removes, creates, and imports the Office 365 powershell session.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function refreshOnPremisesPowershellSession
+{
+	Param ()
+
+	Begin 
+	{
+		Write-LogInfo -LogPath $script:sLogFile -Message 'This function resets the Office 365 powershell sessions....' -toscreen
+	}
+	Process 
+	{
+        removeOnPremisesPowershellSession  #Removes the Office 365 powershell session.
+        createOnPremisesPowershellSession  #Creates the Office 365 powershell session.
+        importOnPremisesPowershellSession  #Imports the Office 365 powershell session.
 	}
 	End 
 	{
@@ -2606,22 +2741,32 @@ Function setOffice365DistributionListSettings
 
 	Begin 
 	{
-		$functionX500 = $NULL
 		$functionEmailAddresses = $NULL
 		Write-LogInfo -LogPath $script:sLogFile -Message 'This function updates the cloud DL settings to match on premise...' -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message 'This does not update the multivalued attributes...' -ToScreen
 
 		#Build the X500 address for the new email address based off on premises values.
 
-		$functionX500 = "X500:"+$script:onpremisesdlConfiguration.legacyExchangeDN
+		$script:x500Address = "X500:"+$script:onpremisesdlConfiguration.legacyExchangeDN
 		$functionEmailAddresses=$script:onpremisesdlconfiguration.emailAddresses
-		$functionEmailAddresses+=$functionX500
+		$functionEmailAddresses+=$script:x500Address
+
+		#If the override to security group is established - and the type is security - the member join restrictions must be overridden to Closed.
+
+		if ( $groupTypeOverride -eq "Security" )
+		{
+			$functionMemberDepartRestriction = "Closed"
+		}
+		else 
+		{
+			$functionMemberDepartRestriction = $script:onpremisesdlconfiguration.MemberDepartRestriction
+		}
 	}
 	Process 
 	{
 		Try 
 		{
-			Set-O365DistributionGroup -Identity $script:onpremisesdlConfiguration.primarySMTPAddress -BypassNestedModerationEnabled $script:onpremisesdlconfiguration.BypassNestedModerationEnabled -MemberJoinRestriction $script:onpremisesdlconfiguration.MemberJoinRestriction -MemberDepartRestriction $script:onpremisesdlconfiguration.MemberDepartRestriction -ReportToManagerEnabled $script:onpremisesdlconfiguration.ReportToManagerEnabled -ReportToOriginatorEnabled $script:onpremisesdlconfiguration.ReportToOriginatorEnabled -SendOofMessageToOriginatorEnabled $script:onpremisesdlconfiguration.SendOofMessageToOriginatorEnabled -Alias $script:onpremisesdlconfiguration.Alias -CustomAttribute1 $script:onpremisesdlconfiguration.CustomAttribute1 -CustomAttribute10 $script:onpremisesdlconfiguration.CustomAttribute10 -CustomAttribute11 $script:onpremisesdlconfiguration.CustomAttribute11 -CustomAttribute12 $script:onpremisesdlconfiguration.CustomAttribute12 -CustomAttribute13 $script:onpremisesdlconfiguration.CustomAttribute13 -CustomAttribute14 $script:onpremisesdlconfiguration.CustomAttribute14 -CustomAttribute15 $script:onpremisesdlconfiguration.CustomAttribute15 -CustomAttribute2 $script:onpremisesdlconfiguration.CustomAttribute2 -CustomAttribute3 $script:onpremisesdlconfiguration.CustomAttribute3 -CustomAttribute4 $script:onpremisesdlconfiguration.CustomAttribute4 -CustomAttribute5 $script:onpremisesdlconfiguration.CustomAttribute5 -CustomAttribute6 $script:onpremisesdlconfiguration.CustomAttribute6 -CustomAttribute7 $script:onpremisesdlconfiguration.CustomAttribute7 -CustomAttribute8 $script:onpremisesdlconfiguration.CustomAttribute8 -CustomAttribute9 $script:onpremisesdlconfiguration.CustomAttribute9 -ExtensionCustomAttribute1 $script:onpremisesdlconfiguration.ExtensionCustomAttribute1 -ExtensionCustomAttribute2 $script:onpremisesdlconfiguration.ExtensionCustomAttribute2 -ExtensionCustomAttribute3 $script:onpremisesdlconfiguration.ExtensionCustomAttribute3 -ExtensionCustomAttribute4 $script:onpremisesdlconfiguration.ExtensionCustomAttribute4 -ExtensionCustomAttribute5 $script:onpremisesdlconfiguration.ExtensionCustomAttribute5 -DisplayName $script:onpremisesdlconfiguration.DisplayName -EmailAddresses $functionEmailAddresses -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -ModerationEnabled $script:onpremisesdlconfiguration.ModerationEnabled -RequireSenderAuthenticationEnabled $script:onpremisesdlconfiguration.RequireSenderAuthenticationEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -SendModerationNotifications $script:onpremisesdlconfiguration.SendModerationNotifications -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -MailTipTranslations $script:onpremisesdlconfiguration.MailTipTranslations -Name $script:onpremisesdlconfiguration.Name
+			Set-O365DistributionGroup -Identity $script:onpremisesdlConfiguration.primarySMTPAddress -BypassNestedModerationEnabled $script:onpremisesdlconfiguration.BypassNestedModerationEnabled -MemberJoinRestriction $script:onpremisesdlconfiguration.MemberJoinRestriction -MemberDepartRestriction $functionMemberDepartRestriction -ReportToManagerEnabled $script:onpremisesdlconfiguration.ReportToManagerEnabled -ReportToOriginatorEnabled $script:onpremisesdlconfiguration.ReportToOriginatorEnabled -SendOofMessageToOriginatorEnabled $script:onpremisesdlconfiguration.SendOofMessageToOriginatorEnabled -Alias $script:onpremisesdlconfiguration.Alias -CustomAttribute1 $script:onpremisesdlconfiguration.CustomAttribute1 -CustomAttribute10 $script:onpremisesdlconfiguration.CustomAttribute10 -CustomAttribute11 $script:onpremisesdlconfiguration.CustomAttribute11 -CustomAttribute12 $script:onpremisesdlconfiguration.CustomAttribute12 -CustomAttribute13 $script:onpremisesdlconfiguration.CustomAttribute13 -CustomAttribute14 $script:onpremisesdlconfiguration.CustomAttribute14 -CustomAttribute15 $script:onpremisesdlconfiguration.CustomAttribute15 -CustomAttribute2 $script:onpremisesdlconfiguration.CustomAttribute2 -CustomAttribute3 $script:onpremisesdlconfiguration.CustomAttribute3 -CustomAttribute4 $script:onpremisesdlconfiguration.CustomAttribute4 -CustomAttribute5 $script:onpremisesdlconfiguration.CustomAttribute5 -CustomAttribute6 $script:onpremisesdlconfiguration.CustomAttribute6 -CustomAttribute7 $script:onpremisesdlconfiguration.CustomAttribute7 -CustomAttribute8 $script:onpremisesdlconfiguration.CustomAttribute8 -CustomAttribute9 $script:onpremisesdlconfiguration.CustomAttribute9 -ExtensionCustomAttribute1 $script:onpremisesdlconfiguration.ExtensionCustomAttribute1 -ExtensionCustomAttribute2 $script:onpremisesdlconfiguration.ExtensionCustomAttribute2 -ExtensionCustomAttribute3 $script:onpremisesdlconfiguration.ExtensionCustomAttribute3 -ExtensionCustomAttribute4 $script:onpremisesdlconfiguration.ExtensionCustomAttribute4 -ExtensionCustomAttribute5 $script:onpremisesdlconfiguration.ExtensionCustomAttribute5 -DisplayName $script:onpremisesdlconfiguration.DisplayName -EmailAddresses $functionEmailAddresses -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -ModerationEnabled $script:onpremisesdlconfiguration.ModerationEnabled -RequireSenderAuthenticationEnabled $script:onpremisesdlconfiguration.RequireSenderAuthenticationEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -SendModerationNotifications $script:onpremisesdlconfiguration.SendModerationNotifications -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -MailTipTranslations $script:onpremisesdlconfiguration.MailTipTranslations -Name $script:onpremisesdlconfiguration.Name
 		}
 		Catch 
 		{
@@ -2641,6 +2786,211 @@ Function setOffice365DistributionListSettings
 		else
 		{
 			Write-LogError -LogPath $script:sLogFile -Message "Cannot update properties of distribution group." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function removeOnPremisesDistributionGroup
+
+.DESCRIPTION
+
+This function removes the on premises distribution group.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function removeOnPremisesDistributionGroup
+{
+	Param ()
+
+	Begin 
+	{
+		Write-LogInfo -LogPath $script:sLogFile -Message 'This function removes the on premises distribution group in preparation for contact conversion' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+			remove-DistributionGroup -Identity $script:onpremisesdlConfiguration.primarySMTPAddress -confirm:$FALSE -byPassSecurityGroupManagerCheck:$True
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Distribution group successfully removed.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message "Distribution group could not be successfully removed." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function createOnPremsiesMailEnabledContact
+
+.DESCRIPTION
+
+This function creates the on premises mail enabled contact replacing the distribution group.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function createOnPremsiesMailEnabledContact
+{
+	Param ()
+
+	Begin 
+	{
+		Write-LogInfo -LogPath $script:sLogFile -Message 'This function creates the on premsies mail enabled contact to replace the distribution group.' -toscreen
+
+		$functionContactName=$script:onpremisesdlConfiguration.name
+		$functionContactPrimarySMTPAddress=$script:onpremisesdlConfiguration.primarySMTPAddress
+
+		foreach ( $emailAddress in $script:office365DLConfiguration.emailaddresses)
+		{
+			if ( $emailAddress -like "*.mail.onmicrosoft.com" )
+			{
+				$functionContactRemoteAddress = $emailAddress
+			}
+		}
+
+		$functionOrganizationalUnit = $script:groupOrganizationalUnit
+	}
+	Process 
+	{
+		Try 
+		{
+			new-mailContact -name $functionContactName -primarySMTPAddress $functionContactPrimarySMTPAddress -externalEmailAddress $functionContactRemoteAddress -organizationalUnit $functionOrganizationalUnit
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The contact was created successfully.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message "The contact was not created successfully." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function setOnPremsiesMailEnabledContactSettings
+
+.DESCRIPTION
+
+This function creates the on premises mail enabled contact replacing the distribution group.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function setOnPremsiesMailEnabledContactSettings
+{
+	Param ()
+
+	Begin 
+	{
+		Write-LogInfo -LogPath $script:sLogFile -Message 'This function sets the properties of the on-premises mail enabled contact.' -toscreen
+		$functionEmailAddresses=$script:onpremisesdlconfiguration.emailAddresses
+		$functionEmailAddresses+=$script:x500Address
+	}
+	Process 
+	{
+		Try 
+		{
+			#Set-mailContact -Identity $script:onpremisesdlConfiguration.primarySMTPAddress -Alias $script:onpremisesdlconfiguration.Alias -CustomAttribute1 $script:onpremisesdlconfiguration.CustomAttribute1 -CustomAttribute10 $script:onpremisesdlconfiguration.CustomAttribute10 -CustomAttribute11 $script:onpremisesdlconfiguration.CustomAttribute11 -CustomAttribute12 $script:onpremisesdlconfiguration.CustomAttribute12 -CustomAttribute13 $script:onpremisesdlconfiguration.CustomAttribute13 -CustomAttribute14 $script:onpremisesdlconfiguration.CustomAttribute14 -CustomAttribute15 $script:onpremisesdlconfiguration.CustomAttribute15 -CustomAttribute2 $script:onpremisesdlconfiguration.CustomAttribute2 -CustomAttribute3 $script:onpremisesdlconfiguration.CustomAttribute3 -CustomAttribute4 $script:onpremisesdlconfiguration.CustomAttribute4 -CustomAttribute5 $script:onpremisesdlconfiguration.CustomAttribute5 -CustomAttribute6 $script:onpremisesdlconfiguration.CustomAttribute6 -CustomAttribute7 $script:onpremisesdlconfiguration.CustomAttribute7 -CustomAttribute8 $script:onpremisesdlconfiguration.CustomAttribute8 -CustomAttribute9 $script:onpremisesdlconfiguration.CustomAttribute9 -ExtensionCustomAttribute1 $script:onpremisesdlconfiguration.ExtensionCustomAttribute1 -ExtensionCustomAttribute2 $script:onpremisesdlconfiguration.ExtensionCustomAttribute2 -ExtensionCustomAttribute3 $script:onpremisesdlconfiguration.ExtensionCustomAttribute3 -ExtensionCustomAttribute4 $script:onpremisesdlconfiguration.ExtensionCustomAttribute4 -ExtensionCustomAttribute5 $script:onpremisesdlconfiguration.ExtensionCustomAttribute5 -DisplayName $script:onpremisesdlconfiguration.DisplayName -EmailAddresses $functionEmailAddresses -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -ModerationEnabled $script:onpremisesdlconfiguration.ModerationEnabled -RequireSenderAuthenticationEnabled $script:onpremisesdlconfiguration.RequireSenderAuthenticationEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -SendModerationNotifications $script:onpremisesdlconfiguration.SendModerationNotifications -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -Name $script:onpremisesdlconfiguration.Name
+			Set-mailContact -Identity $script:onpremisesdlConfiguration.primarySMTPAddress -Alias $script:onpremisesdlconfiguration.Alias -DisplayName $script:onpremisesdlconfiguration.DisplayName -EmailAddresses $functionEmailAddresses -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -Name $script:onpremisesdlconfiguration.Name						
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The properties have been set successfully.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message "The properties could not be set successfully." -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
@@ -2806,6 +3156,139 @@ Function setOffice365DistributionlistMultivaluedAttributes
 	}
 }
 
+<#
+*******************************************************************************************************
+
+Function setOnPremisesMailContactMultivaluedAttributes
+
+.DESCRIPTION
+
+This function sets the multi valued attribute settings on the new Cloud DL based on the previous on-premises DL.
+
+.PARAMETER 
+
+[string]$operationType is the type of operation - for example moderateydBy or managedBy.
+[string]$primarySMTPAddressOrUPN is the primary SMTP address of a recipient or UPN of the user object that we are operating on.
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+
+
+Function setOnPremisesMailContactMultivaluedAttributes
+{
+	Param ([string]$operationType,[string]$primarySMTPAddressOrUPN)
+
+	Begin 
+	{
+		Write-LogInfo -LogPath $script:sLogFile -Message 'This function sets the multi-valued attributes' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message $operationType -ToScreen
+		Write-LogInfo -LogPath $script:sLogFile -Message $primarySMTPAddressOrUPN
+	}
+	Process 
+	{
+		#Based on the operation type specified utilize the appropriate array and iterate through each member adding to the attribute in the service.
+
+		if ( $operationType -eq "ModeratedBy")
+		{
+			Try
+			{
+				set-mailContact -identity $script:onpremisesdlConfiguration.primarySMTPAddress -ModeratedBy @{add=$PrimarySMTPAddressOrUPN}
+			}
+			Catch
+			{
+				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+				cleanupSessions
+				Stop-Log -LogPath $script:sLogFile -ToScreen
+				Break
+			}
+		}
+		elseif ( $operationType -eq "GrantSendOnBehalfTo")
+		{
+			Try
+			{
+				set-mailContact -identity $script:onpremisesdlConfiguration.primarySMTPAddress -GrantSendOnBehalfTo @{add=$PrimarySMTPAddressOrUPN}
+			}
+			Catch
+			{
+				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+				cleanupSessions
+				Stop-Log -LogPath $script:sLogFile -ToScreen
+				Break
+			}
+		}
+		elseif ( $operationType -eq "AcceptMessagesOnlyFromSendersOrMembers")
+		{
+			Try
+			{
+				set-mailContact -identity $script:onpremisesdlConfiguration.primarySMTPAddress -AcceptMessagesOnlyFromSendersOrMembers @{add=$PrimarySMTPAddressOrUPN}
+			}
+			Catch
+			{
+				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+				cleanupSessions
+				Stop-Log -LogPath $script:sLogFile -ToScreen
+				Break
+			}
+		}
+		elseif ( $operationType -eq "RejectMessagesFromSendersOrMembers")
+		{
+			Try
+			{
+				set-mailContact -identity $script:onpremisesdlConfiguration.primarySMTPAddress -RejectMessagesFromSendersOrMembers @{add=$PrimarySMTPAddressOrUPN}
+			}
+			Catch
+			{
+				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+				cleanupSessions
+				Stop-Log -LogPath $script:sLogFile -ToScreen
+				Break
+			}
+		}
+		elseif ( $operationType -eq "BypassModerationFromSendersOrMembers")
+		{
+			Try
+			{
+				$functionMailContactBypass = (get-mailcontact -identity $script:onpremisesdlConfiguration.primarySMTPAddress).BypassModerationFromSendersOrMembers
+				$functionMailContactBypass += $PrimarySMTPAddressOrUPN
+				set-mailContact -identity $script:onpremisesdlConfiguration.primarySMTPAddress -BypassModerationFromSendersOrMembers $functionMailContactBypass
+			}
+			Catch
+			{
+				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+				cleanupSessions
+				Stop-Log -LogPath $script:sLogFile -ToScreen
+				Break
+			}
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The mutilvalued attribute was updated successfully.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $operationType -ToScreen
+            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+
+			Write-LogError -LogPath $script:sLogFile -Message "The mutilvalued attribute could not be updated successfully - exiting." -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $operationType -ToScreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+#>
+
 #-----------------------------------------------------------[Execution]------------------------------------------------------------
 
 #Create log file for operations within this script.
@@ -2930,7 +3413,10 @@ if ( $script:onpremisesdlConfiguration.GrantSendOnBehalfTo -ne $NULL )
 
 		if ( ( $member.recipientType -eq "MailUniversalSecurityGroup" ) -or ($member.recipientType -eq "MailUniversalDistributionGroup") )
 		{
-			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			}
 		}
 	}
 }
@@ -2949,7 +3435,10 @@ if ( $script:onpremisesdlConfiguration.AcceptMessagesOnlyFromSendersOrMembers -n
 
 		if ( ( $member.recipientType -eq "MailUniversalSecurityGroup" ) -or ($member.recipientType -eq "MailUniversalDistributionGroup") )
 		{
-			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			}
 		}
 	}
 }
@@ -2968,7 +3457,10 @@ if ( $script:onpremisesdlConfiguration.RejectMessagesFromSendersOrMembers -ne $N
 
 		if ( ( $member.recipientType -eq "MailUniversalSecurityGroup" ) -or ($member.recipientType -eq "MailUniversalDistributionGroup") )
 		{
-			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			}
 		}
 	}
 }
@@ -2987,7 +3479,10 @@ if ( $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembers -ne 
 
 		if ( ( $member.recipientType -eq "MailUniversalSecurityGroup" ) -or ($member.recipientType -eq "MailUniversalDistributionGroup") )
 		{
-			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+			}
 		}
 	}
 }
@@ -3154,6 +3649,123 @@ backupNewOffice365DLConfiguration  #Backup the office 365 DL configuration.
 if ($script:newOffice365DLConfigurationMembership -ne $NULL)
 {
 	backupNewOffice365DLConfigurationMembership
+}
+
+if ($convertToContact -eq $TRUE)
+{
+	#Reset on premsies powershell session.
+
+	refreshOnPremisesPowershellSession
+
+	#Delete distribution group on premises.
+
+	removeOnPremisesDistributionGroup
+
+	#Replicate each domain controller in the domain.
+	#Administrators may choose to refresh this to a single domain controller or set of domain controllers by calling the function with static values and more than once.
+
+	foreach ( $DC in $script:adDomainControllers )
+	{
+		replicateDomainControllers ( $dc.HostName ) ( $script:adDomain.DistinguishedName )
+	}
+
+	#Start countdown for the period of time specified by the variable for post domain controller replication.
+
+	Start-PSCountdown -Minutes 1 -Title "Waiting for domain controller replication" -Message "Waiting for domain controller replication"
+
+	#Create new mail enabled contact with mapping address set.
+
+	createOnPremsiesMailEnabledContact
+
+	#Replicate each domain controller in the domain.
+	#Administrators may choose to refresh this to a single domain controller or set of domain controllers by calling the function with static values and more than once.
+
+	foreach ( $DC in $script:adDomainControllers )
+	{
+		replicateDomainControllers ( $dc.HostName ) ( $script:adDomain.DistinguishedName )
+	}
+
+	#Start countdown for the period of time specified by the variable for post domain controller replication.
+
+	Start-PSCountdown -Minutes 1 -Title "Waiting for domain controller replication" -Message "Waiting for domain controller replication"
+
+	#Set the on-premises mail contact settings.
+
+	setOnPremsiesMailEnabledContactSettings
+
+<#
+	Removing this code at this time.
+	The original intention was to mirror any restrictions on the DL to the contact created above.
+	I discovered in testing that although this worked - if the restrictions were actually a DL that was migrated (remmber the DL can still exist on prmieses as DL..
+	of if converted to contact the restrictions were lost anyway).
+	It makes more sense at this point to let the contact wide open from a restrictions standpoint and let the service apply the restrictions.else {
+		
+	}
+	if ( $script:onpremisesdlconfigurationModeratedByArray -ne $NULL)
+	{
+		foreach ($member in $script:onpremisesdlconfigurationModeratedByArray)
+		{
+			Write-Loginfo -LogPath $script:sLogFile -Message "Processing Moderated By member to mail contact..." -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				setOnPremisesMailContactMultivaluedAttributes ( "ModeratedBy" ) ( $member.PrimarySMTPAddressOrUPN  )
+			}
+		}
+	}
+
+	if ( $script:onpremisesdlconfigurationGrantSendOnBehalfTOArray -ne $NULL )
+	{
+		foreach ($member in $script:onpremisesdlconfigurationGrantSendOnBehalfTOArray)
+		{
+			Write-Loginfo -LogPath $script:sLogFile -Message "Processing Grant Send On Behalf To Array member to mail contact..." -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				setOnPremisesMailContactMultivaluedAttributes ( "GrantSendOnBehalfTo" ) ( $member.PrimarySMTPAddressOrUPN  )
+			}
+		}
+	}
+
+	if ( $script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers -ne $NULL )
+	{
+		foreach ($member in $script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers)
+		{
+			Write-Loginfo -LogPath $script:sLogFile -Message "Processing Accept Messages Only From Senders Or Members member to mail contact..." -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				setOnPremisesMailContactMultivaluedAttributes ( "AcceptMessagesOnlyFromSendersOrMembers" ) ( $member.PrimarySMTPAddressOrUPN  )
+			}
+		}
+	}
+
+	if ( $script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers -ne $null)
+	{
+		foreach ($member in $script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers)
+		{
+			Write-Loginfo -LogPath $script:sLogFile -Message "Processing Reject Messages From Senders Or Members member to mail contact..." -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				setOnPremisesMailContactMultivaluedAttributes ( "RejectMessagesFromSendersOrMembers" ) ( $member.PrimarySMTPAddressOrUPN  )
+			}
+		}
+	}
+
+	if ( $script:onPremsiesDLBypassModerationFromSendersOrMembers -ne $NULL )
+	{
+		foreach ($member in $script:onPremsiesDLBypassModerationFromSendersOrMembers )
+		{
+			Write-Loginfo -LogPath $script:sLogFile -Message "Processing Bypass Moderation From Senders Or Members member to Office 365..." -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
+			if ( $script:onpremisesdlConfiguration.primarySMTPAddress -ne $member.PrimarySMTPAddressOrUPN )
+			{
+				setOnPremisesMailContactMultivaluedAttributes ( "BypassModerationFromSendersOrMembers" ) ( $member.PrimarySMTPAddressOrUPN  )
+			}
+		}
+	}
+#>	
 }
 
 cleanupSessions  #Clean up - were outta here.
