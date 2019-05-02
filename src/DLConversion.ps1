@@ -227,11 +227,13 @@ $script:x500Address=$NULL
 <###ADMIN###>$script:onPremsiesDLConfigurationMembershipXMLName = "onpremisesDLConfigurationMembership.XML"
 <###ADMIN###>$script:newOffice365DLConfigurationXMLName = "newOffice365DLConfiguration.XML"
 <###ADMIN###>$script:newOffice365DLConfigurationMembershipXMLName = "newOffice365DLConfigurationMembership.XML"
+<###ADMIN###>$script:onPremisesMemberOfXMLName = "onPremsiesMemberOf.XML"
 $script:onPremisesXML = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationXMLName #Full path to on premises XML.
 $script:office365XML = Join-Path $script:backupXMLPath -ChildPath $script:office365DLXMLName #Full path to cloud XML.
 $script:onPremsiesMembershipXML = Join-Path $script:backupXMLPath -ChildPath $script:onPremsiesDLConfigurationMembershipXMLName
 $script:newOffice365XML = Join-Path $script:backupXMLPath -ChildPath $script:newOffice365DLConfigurationXMLName
 $script:newOffice365MembershipXML = Join-Path $script:backupXMLPath -ChildPath $script:newOffice365DLConfigurationMembershipXMLName
+$script:onPremisesMemberOfXML = Join-Path $script:backupXMLPath -ChildPath $script:onPremisesMemberOfXMLName
 
 #Establish misc.
 
@@ -1957,7 +1959,7 @@ Function backupOnPremisesMemberOf
 	{
 		Try 
 		{
-            $script:office365DLConfiguration | Export-CLIXML -Path $script:office365XML
+            $script:onPremisesDLMemberOf | Export-CLIXML -Path $script:onPremisesMemberOfXML
 		}
 		Catch 
 		{
