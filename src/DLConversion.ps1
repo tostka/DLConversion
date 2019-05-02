@@ -221,7 +221,8 @@ $script:x500Address=$NULL
 
 #Establish script variables to backup distribution list information.
 
-<###ADMIN###>$script:backupXMLPath = "C:\Scripts\" #Location of backup XML files.
+<###ADMIN###>$script:backupXMLPath = "C:\Scripts\Working\" #Location of backup XML files.
+$script:archiveXMLPath = $NULL
 <###ADMIN###>$script:onpremisesdlconfigurationXMLName = "onpremisesdlConfiguration.XML" #On premises XML file name.
 <###ADMIN###>$script:office365DLXMLName = "office365DLConfiguration.XML" #Cloud XML file name.
 <###ADMIN###>$script:onPremsiesDLConfigurationMembershipXMLName = "onpremisesDLConfigurationMembership.XML"
@@ -2001,11 +2002,11 @@ Function backupOnPremisesMemberOf
 <#
 *******************************************************************************************************
 
-Function backupOnPremisesMemberOf
+Function backupOnPremisesMultiValuedAttributes
 
 .DESCRIPTION
 
-This function records the groups that the migrated group is a member of.
+This function records the multi-valued attributes of the DLs where permissions are set on premises.
 
 .PARAMETER <Parameter_Name>
 
@@ -2099,6 +2100,84 @@ Function backupOnPremisesMultiValuedAttributes
 		{
 
 			Write-LogError -LogPath $script:sLogFile -Message "The on premises multivalued attributes for the migrated group could not be recorded to XML." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function archiveFiles
+
+.DESCRIPTION
+
+This function archives the migrated DL files.
+
+.PARAMETER <Parameter_Name>
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function archiveFiles
+{
+	Param ()
+
+	Begin 
+	{
+		$functionDate = Get-Date -Format FileDateTime
+		$script:archiveXMLPath = $script:onpremisesdlConfiguration.alias + $functionDate
+
+	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function moves the backup files to an archive directory.' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+			New-Item -ItemType Directory -Path $script:archiveXMLPath -Force
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+            get-childitem -path $script:backupXMLPath -recurse | move-item -destination $script:archiveXMLPath
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The on premises member of for the migrated group has been recorded to XML.' -toscreen
+            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+
+			Write-LogError -LogPath $script:sLogFile -Message "The on premises member of for the migrated group could not be recorded to XML." -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
@@ -5066,5 +5145,7 @@ if ($convertToContact -eq $TRUE)
 
 	$error.clear()
 }
+
+archiveFiles	#Achive the move files so we have them for future reference.
 
 cleanupSessions  #Clean up - were outta here.
