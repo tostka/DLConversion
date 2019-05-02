@@ -57,6 +57,10 @@ Note:	This may require enabling basic authentication on one or more endpoints fo
 11)	Recreate the distribution list directly in Exchange Online.
 12)	Stamp all attributes of the on-premises DL to the new DL in Exchange Online.
 13)	Stamp the original legacyExchangeDN to the new DL as an X500 address to preserve reply to functionality.
+14) Assuming convert to contact logic is not overridden continue...
+15)  Delete the DL moved to the converted DL OU.
+16)  Create a dynamic distribution group where the criteria matches a contact that will be created.
+17)  Create a mail contact that uses the onmicrosoft.com address of the group and has custom attributes that match the dynamic DL created.
 
 .INPUTS
 
