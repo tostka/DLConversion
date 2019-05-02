@@ -2126,20 +2126,6 @@ Function backupOnPremisesMultiValuedAttributes
 			Stop-Log -LogPath $script:sLogFile -ToScreen
 			Break
 		}
-		Try 
-		{
-			if ( $script:originalForwardingSMTPAddress -ne $NULL )
-			{
-				$script:originalForwardingSMTPAddress | Export-CLIXML -Path $script:originalForwardingSMTPAddressXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
 	}
 	End 
 	{
@@ -3785,6 +3771,28 @@ Function recordOriginalMultivaluedAttributes
 				}
 
 				$script:originalBypassModerationFromSendersOrMembers+=$functionRecipientObject		
+			}
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			#Using a filter to determine all mailboxes that have forwardingAddress set to the distribution group.
+
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all forwarding addresses for the identity...' -toscreen
+
+            $functionCommand = "get-mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$functionGroupIdentity' } -domainController '$script:adDomainController'"
+            
+            $script:originalForwardingAddress = Invoke-Expression $functionCommand
+		
+			foreach ( $member in $script:originalForwardingAddress )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message $member.primarySMTPAddress -ToScreen
 			}
 		}
 		Catch 
