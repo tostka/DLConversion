@@ -4809,18 +4809,17 @@ if ($script:newOffice365DLConfigurationMembership -ne $NULL)
 
 if ($convertToContact -eq $TRUE)
 {
-	#Record the membership of the distribution group in other groups.  This will be utilized to reset the mail contact.
-
-	recordDistributionGroupMembership
-
 	#To determine if a group is set on the properties of another groups attributes - we need the group id.  The ID needs to be updated since the groups OU was moved.
 
 	recordMovedOriginalDistributionGroupProperties
 
+	#Record the membership of the distribution group in other groups.  This will be utilized to reset the mail contact.
+
+	recordDistributionGroupMembership
+
 	#The distribution list can get set to serveral properties on other lists.
 	#The goal of this function is to locate those and record them.
 	#If the group migrating has permissions to itself - skip the recoridng as it's not required.
-
 
 	recordOriginalMultivaluedAttributes
 	
