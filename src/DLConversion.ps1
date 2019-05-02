@@ -234,6 +234,8 @@ $script:archiveXMLPath = $NULL
 <###ADMIN###>$script:originalManagedByXMLName="onPremsiesManagedBy.xml"
 <###ADMIN###>$script:originalRejectMessagesFromXMLName="onPremsiesRejectMessagesFrom.xml"
 <###ADMIN###>$script:originalBypassModerationFromSendersOrMembersXMLName="BypassModerationFromSendersOrMembers.xml"
+<###ADMIN###>$script:originalForwardingAddressXMLName="ForwardAddress.xml"
+<###ADMIN###>$script:originalForwardingSMTPAddressXMLName="ForwardingSMTPAddress.xml"
 $script:onPremisesXML = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationXMLName #Full path to on premises XML.
 $script:office365XML = Join-Path $script:backupXMLPath -ChildPath $script:office365DLXMLName #Full path to cloud XML.
 $script:onPremsiesMembershipXML = Join-Path $script:backupXMLPath -ChildPath $script:onPremsiesDLConfigurationMembershipXMLName
@@ -246,6 +248,8 @@ $script:originalAcceptMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath
 $script:originalManagedByXML=Join-Path $script:backupXMLPath -ChildPath $script:originalManagedByXMLName
 $script:originalRejectMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalRejectMessagesFromXMLName
 $script:originalBypassModerationFromSendersOrMembersXML=Join-Path $script:backupXMLPath -ChildPath $script:originalBypassModerationFromSendersOrMembersXMLName
+$script:originalForwardingSMTPAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingSMTPAddressXMLName
+$script:originalForwardingAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingAddressXMLName
 
 #Establish misc.
 
@@ -259,6 +263,8 @@ $script:onPremisesMovedDLConfiguration = $NULL	#Holds the seetings of the distri
 [array]$script:originalGrantSendOnBehalfTo = @()  #Holds all distribution lists where the converted DL had grant send on behalf rights.
 [array]$script:originalAcceptMessagesFrom = @()  #HOlds all the distribution lists where the converted DL had accept messages from rights.
 [array]$script:originalRejectMessagesFrom = @()  #HOlds all the distribution lists where the converted DL had reject messages from rights.
+[array]$script:originalForwardingAddress = @()
+[array]$script:originalForwardingSMTPAddress = @()
 [array]$script:originalBypassModerationFromSendersOrMembers = @()
 [array]$script:originalManagedBy = @()
 $script:randomContactName = $NULL
@@ -2097,6 +2103,34 @@ Function backupOnPremisesMultiValuedAttributes
 			if ( $script:originalBypassModerationFromSendersOrMembers -ne $NULL )
 			{
 				$script:originalBypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:originalBypassModerationFromSendersOrMembersXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:originalForwardingAddress -ne $NULL )
+			{
+				$script:originalForwardingAddress | Export-CLIXML -Path $script:originalForwardingAddressXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:originalForwardingSMTPAddress -ne $NULL )
+			{
+				$script:originalForwardingSMTPAddress | Export-CLIXML -Path $script:originalForwardingSMTPAddressXML
 			}
 		}
 		Catch 
