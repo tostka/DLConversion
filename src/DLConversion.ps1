@@ -1924,6 +1924,70 @@ Function backupOffice365DLConfiguration
 <#
 *******************************************************************************************************
 
+Function backupOnPremisesMemberOf
+
+.DESCRIPTION
+
+This function records the groups that the migrated group is a member of.
+
+.PARAMETER <Parameter_Name>
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function backupOnPremisesMemberOf
+{
+	Param ()
+
+	Begin 
+	{
+	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function records the groups that the migrated group is a member of to XML...' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+            $script:office365DLConfiguration | Export-CLIXML -Path $script:office365XML
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The on premises member of for the migrated group has been recorded to XML.' -toscreen
+            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+
+			Write-LogError -LogPath $script:sLogFile -Message "The on premises member of for the migrated group could not be recorded to XML." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
 Function backupOnPremisesdlMembership
 
 .DESCRIPTION
