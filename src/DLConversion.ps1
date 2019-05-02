@@ -163,7 +163,7 @@ Import-Module PSLogging
 $sScriptVersion = "1.2"
 
 #Log File Info
-<###ADMIN###>$script:sLogPath = "C:\Scripts\"
+<###ADMIN###>$script:sLogPath = "C:\Scripts\Working\"
 <###ADMIN###>$script:sLogName = "DLConversion.log"
 <###ADMIN###>$script:sLogFile = Join-Path -Path $sLogPath -ChildPath $sLogName
 
@@ -1971,7 +1971,10 @@ Function backupOnPremisesMemberOf
 	{
 		Try 
 		{
-            $script:onPremisesDLMemberOf | Export-CLIXML -Path $script:onPremisesMemberOfXML
+			if ( $script:onPremisesDLMemberOf -ne $NULL )
+			{
+				$script:onPremisesDLMemberOf | Export-CLIXML -Path $script:onPremisesMemberOfXML
+			}
 		}
 		Catch 
 		{
@@ -2035,7 +2038,10 @@ Function backupOnPremisesMultiValuedAttributes
 	{
 		Try 
 		{
-            $script:originalGrantSendOnBehalfTo | Export-CLIXML -Path $script:originalGrantSendOnBehalfToXML
+			if ( $script:originalGrantSendOnBehalfTo -ne $NULL )
+			{
+				$script:originalGrantSendOnBehalfTo | Export-CLIXML -Path $script:originalGrantSendOnBehalfToXML
+			}
 		}
 		Catch 
 		{
@@ -2046,7 +2052,10 @@ Function backupOnPremisesMultiValuedAttributes
 		}
 		Try 
 		{
-            $script:originalAcceptMessagesFrom | Export-CLIXML -Path $script:originalAcceptMessagesFromXML
+			if ($script:originalAcceptMessagesFrom -ne $NULL )
+			{
+				$script:originalAcceptMessagesFrom | Export-CLIXML -Path $script:originalAcceptMessagesFromXML
+			}
 		}
 		Catch 
 		{
@@ -2057,7 +2066,10 @@ Function backupOnPremisesMultiValuedAttributes
 		}
 		Try 
 		{
-			$script:originalManagedBy | Export-CLIXML -Path $script:originalManagedByXML
+			if ( $script:originalManagedBy -ne $NULL )
+			{
+				$script:originalManagedBy | Export-CLIXML -Path $script:originalManagedByXML
+			}
 		}
 		Catch 
 		{
@@ -2068,7 +2080,10 @@ Function backupOnPremisesMultiValuedAttributes
 		}
 		Try 
 		{
-			$script:originalRejectMessagesFrom | Export-CLIXML -Path $script:originalRejectMessagesFromXML
+			if ( $script:originalRejectMessagesFrom -ne $NULL )
+			{
+				$script:originalRejectMessagesFrom | Export-CLIXML -Path $script:originalRejectMessagesFromXML
+			}
 		}
 		Catch 
 		{
@@ -2079,7 +2094,10 @@ Function backupOnPremisesMultiValuedAttributes
 		}
 		Try 
 		{
-			$script:originalBypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:originalBypassModerationFromSendersOrMembersXML
+			if ( $script:originalBypassModerationFromSendersOrMembers -ne $NULL )
+			{
+				$script:originalBypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:originalBypassModerationFromSendersOrMembersXML
+			}
 		}
 		Catch 
 		{
@@ -2139,31 +2157,15 @@ Function archiveFiles
 	{
 		$functionDate = Get-Date -Format FileDateTime
 		$script:archiveXMLPath = $script:onpremisesdlConfiguration.alias + $functionDate
-
-	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function moves the backup files to an archive directory.' -toscreen
 	}
 	Process 
 	{
 		Try 
 		{
-			New-Item -ItemType Directory -Path $script:archiveXMLPath -Force
+			rename-item –path $script:sLogPath –newname $script:archiveXMLPath
 		}
 		Catch 
 		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-            get-childitem -path $script:backupXMLPath -recurse | move-item -destination $script:archiveXMLPath
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
 			Break
 		}
 	}
@@ -2171,16 +2173,11 @@ Function archiveFiles
 	{
 		If ($?) 
 		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'The on premises member of for the migrated group has been recorded to XML.' -toscreen
-            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+			Write-Host "No Error Archive"
 		}
 		else
 		{
-
-			Write-LogError -LogPath $script:sLogFile -Message "The on premises member of for the migrated group could not be recorded to XML." -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Write-Host "Error"
 		}
 	}
 }
@@ -4044,6 +4041,110 @@ Function setOnPremisesDynamicDistributionGroupSettings
 <#
 *******************************************************************************************************
 
+Function createAndUpdateMailOnMicrosoftAddress
+
+.DESCRIPTION
+
+This function creates a mail.onmicrosoft.com address and adds it to the group in Office 365.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function createAndUpdateMailOnMicrosoftAddress
+{
+	Param ()
+
+	Begin 
+	{
+		$functionContactRemoteAddress = $NULL
+		$functionEmailAddresses = $NULL	#Utilized to hold working email addresses in the function.
+
+		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function createAndUpdateMailOnMicrosoftAddress...' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message 'THis function creates a mail.onmicrosoft.com address for the group and updates Office 365.' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+
+		$functionEmailAddresses = $script:newOffice365DLConfiguration.emailAddresses
+
+		#Iterate through all proxy addresses to find the remote routing address.
+		#This needs to be removed so that it can be stamped on the mail contact matching this group.
+		
+		foreach ( $emailAddress in $functionEmailAddresses)
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Iterating through proxy addresses to find onmicrosoft.com address...' -toscreen
+
+			if ( $emailAddress -like "*.onmicrosoft.com" )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'The onmicrosoft.com address has been found...' -toscreen
+
+				$functionContactRemoteAddress=$emailAddress
+			}
+		}
+
+		#We now have the onmicrosoft.com address stamped on all objects created in the service.
+		#Now we need to take this address and convert it into a mail.onmicrosoft.com address.
+		#First split at the @ then split at the . so we can inject the mail portion of the address.
+		#Then take the entire address and make it lower case.
+
+		$functionContactRemoteAddress = $functionContactRemoteAddress -split "@"
+
+		$functionContactRemoteAddress = $functionContactRemoteAddress -split "\."
+
+		$script:remoteRoutingAddress = $functionContactRemoteAddress[0] + "@" + $functionContactRemoteAddress[1] + ".mail." + $functionContactRemoteAddress[2] + "." + $functionContactRemoteAddress[3]
+
+		$script:remoteRoutingAddress = $script:remoteRoutingAddress.ToLower()
+	}
+	Process 
+	{
+		Try 
+		{
+			set-O365DistributionGroup -identity $script:newOffice365DLConfiguration.Alias -EmailAddresses @{add=$script:remoteRoutingAddress}
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Exiting function createAndUpdateMailOnMicrosoftAddress...' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The Address was successfully created and updated.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function createAndUpdateMailOnMicrosoftAddress...' -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message "The address could not be updated." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
 Function createRemoteRoutingContact
 
 .DESCRIPTION
@@ -4087,6 +4188,17 @@ Function createRemoteRoutingContact
 		#Set the OU to create the contact to match the OU of the original group.
 
 		$functionOrganizationalUnit = $script:onpremisesdlConfiguration.organizationalUnit
+
+		#In the function where we provision the dynamic ditribution group we capture the mail.onmicrosoft.com address.
+		#This address should be used on the mail contact as the remote routing address.
+		#It is possible that depending on email address policy configuration groups did not get a mail.onmicrosoft.com address when the hybrid configuration wizard was run.
+		#This results in the group not having the address in the service.
+		#If thhis is the case - we need to create one to ensure the secured connector it utilized cross premises.
+
+		if ( $script:remoteRoutingAddress -eq $NULL )
+		{
+			createAndUpdateMailOnMicrosoftAddress
+		}
 	}
 	Process 
 	{
@@ -4704,6 +4816,8 @@ Function resetOriginalDistributionListSettings
 
 #Create log file for operations within this script.
 
+New-Item -ItemType Directory -Path $script:archiveXMLPath -Force
+
 Start-Log -LogPath $script:sLogPath -LogName $script:sLogName -ScriptVersion $script:sScriptVersion -ToScreen
 
 establishOnPremisesCredentials  #Function call to import and populate on premises credentials.
@@ -5146,6 +5260,6 @@ if ($convertToContact -eq $TRUE)
 	$error.clear()
 }
 
-archiveFiles	#Achive the move files so we have them for future reference.
-
 cleanupSessions  #Clean up - were outta here.
+
+archiveFiles	#Achive the move files so we have them for future reference.
