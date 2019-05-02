@@ -120,7 +120,11 @@ In the ad connect invocation function split the importation of the module from t
 
 Redefined the replicate domain controllers function.  It's now broken down into triggering inbound replication and outbound replication from local domain controllers within the site.
 
-
+Version:		1.5
+Author:			Timothy J. McMichael
+Change Date:	May 1st, 2019.
+Purpose/Change:	In this version we correct some of operations.  For example, we update the AD calls to utilize calls that work assuming a non-alias is utilized for the group.
+Additionally new functions have been created to log information regaridng the items created.
 
   
 .EXAMPLE
@@ -3213,7 +3217,7 @@ Function recordDistributionGroupMembership
 		{
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Invoking AD call to domain controller to pull membership of the group on premises...' -toscreen
 
-			$script:onPremisesDLMemberOf = Invoke-Command -ScriptBlock { get-ADPrincipalGroupMembership -identity $args[0] } -ArgumentList $dlToConvert -Session $script:onPremisesADDomainControllerPowerShellSession
+			$script:onPremisesDLMemberOf = Invoke-Command -ScriptBlock { get-ADPrincipalGroupMembership -identity $args[0] } -ArgumentList $script:onPremisesMovedDLConfiguration.samAccountName -Session $script:onPremisesADDomainControllerPowerShellSession
 		
 			foreach ( $member in $script:onPremisesDLMemberOf )
 			{
