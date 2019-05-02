@@ -4830,6 +4830,40 @@ Function resetOriginalDistributionListSettings
 				}
 			}
 		}
+
+		if ( $script:originalForwardingAddress -ne $NULL )
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing forwading address...' -toscreen
+
+			#Group had forwarding address on other groups.  Add mail contact to forwarding address.
+
+			$functionArray = $script:originalManagedBy
+
+			foreach ( $member in $functionArray )
+            {
+				#Get the distribution list that had the group originall on bypass full bypass list to a variable.
+
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding forwarding Address... ' -toscreen
+				Write-LogInfo -LogPath $script:sLogFile $member.PrimarySMTPAddress -ToScreen
+
+				Try
+				{
+					#Set the forwarding address of the mailbox.
+
+					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding forwarding address to the mailbox.... ' -ToScreen
+					Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
+					
+					set-mailbox -identity $member.PrimarySMTPAddress -forwardingAddress $script:onPremisesNewContactConfiguration.identity -domainController $script:adDomainController -BypassSecurityGroupManagerCheck
+				}
+				Catch
+				{
+					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+					cleanupSessions
+					Stop-Log -LogPath $script:sLogFile -ToScreen
+					Break
+				}
+			}
+		}
 	}
 	End 
 	{
