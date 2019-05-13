@@ -4255,7 +4255,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Apply the settings to the dynamic distribution group...' -toscreen
 
-			set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -primarySMTPAddress $script:newDynamicDLAddress -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -Name $script:onpremisesdlconfiguration.Name -domaincontroller $script:adDomainController -RequireSenderAuthenticationEnabled $FALSE
+			set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -primarySMTPAddress $script:newDynamicDLAddress -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -WindowsEmailAddress $script:newDynamicDLAddress -Name $script:onpremisesdlconfiguration.Name -domaincontroller $script:adDomainController -RequireSenderAuthenticationEnabled $FALSE
 		}
 		Catch 
 		{
@@ -4273,7 +4273,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 			foreach ( $address in $functionEmailAddresses )
 			{
 				$address = $address.tolower()
-				set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -EmailAddresses @{add=$address}
+				set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -EmailAddresses @{add=$address} -domaincontroller $script:adDomainController
 			}
 		}
 		Catch 
@@ -5219,6 +5219,7 @@ if ( $script:onpremisesdlconfigurationMembership -ne $NULL )
 		#We added an array counter to each function that counts where were at in processing the member array.
 		#Since the test function gets the recipient from office 365 - we now capture the GUID of the object.  This is added to the GUID section of the object created before.
 		#We will modify moving forward to add members and set attributes via object GUID - instead of the normalized SMTP address.
+		#Use of script based variables here was kinda hokie - but it works.
 
 		$script:onpremisesdlconfigurationMembershipArray[$script:arrayCounter].GUID=$script:arrayGUID
 
