@@ -776,7 +776,7 @@ Function removeOffice365PowerShellSession
 <#
 *******************************************************************************************************
 
-Function removeOffice365PowerShellSession
+Function removeOnPremisesPowershellSession
 
 .DESCRIPTION
 
@@ -1523,7 +1523,7 @@ Function collectNewOffice365DLInformation
 <#
 *******************************************************************************************************
 
-Function collectNewOffice365DLInformation
+Function collectNewOffice365DLMemberInformation
 
 .DESCRIPTION
 
@@ -2069,6 +2069,7 @@ Function backupOnPremisesMultiValuedAttributes
 		{
 			if ( $script:originalGrantSendOnBehalfTo -ne $NULL )
 			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing grant send on behalf to to XML...' -toscreen
 				$script:originalGrantSendOnBehalfTo | Export-CLIXML -Path $script:originalGrantSendOnBehalfToXML
 			}
 		}
@@ -2083,6 +2084,7 @@ Function backupOnPremisesMultiValuedAttributes
 		{
 			if ($script:originalAcceptMessagesFrom -ne $NULL )
 			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing accept messages from  to to XML...' -toscreen
 				$script:originalAcceptMessagesFrom | Export-CLIXML -Path $script:originalAcceptMessagesFromXML
 			}
 		}
@@ -2097,6 +2099,7 @@ Function backupOnPremisesMultiValuedAttributes
 		{
 			if ( $script:originalManagedBy -ne $NULL )
 			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing managed by to to XML...' -toscreen
 				$script:originalManagedBy | Export-CLIXML -Path $script:originalManagedByXML
 			}
 		}
@@ -2111,6 +2114,7 @@ Function backupOnPremisesMultiValuedAttributes
 		{
 			if ( $script:originalRejectMessagesFrom -ne $NULL )
 			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing reject messages from to XML...' -toscreen
 				$script:originalRejectMessagesFrom | Export-CLIXML -Path $script:originalRejectMessagesFromXML
 			}
 		}
@@ -2125,6 +2129,7 @@ Function backupOnPremisesMultiValuedAttributes
 		{
 			if ( $script:originalBypassModerationFromSendersOrMembers -ne $NULL )
 			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing bypass mdoeration to XML...' -toscreen
 				$script:originalBypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:originalBypassModerationFromSendersOrMembersXML
 			}
 		}
@@ -2139,6 +2144,7 @@ Function backupOnPremisesMultiValuedAttributes
 		{
 			if ( $script:originalForwardingAddress -ne $NULL )
 			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing forwarding address to XML...' -toscreen
 				$script:originalForwardingAddress | Export-CLIXML -Path $script:originalForwardingAddressXML
 			}
 		}
@@ -5610,7 +5616,7 @@ if ($convertToContact -eq $TRUE)
 
 	removeOnPremisesDistributionGroup
 
-	#We wil utilize a dynamic distribution group to reprsent the original group in the GAL.
+	#We wil utilize a dynamic distribution group to represent the original group in the GAL.
 	#This ensures that under no circumstances can we have an address collission.
 
 	createOnPremisesDynamicDistributionGroup
