@@ -234,17 +234,17 @@ $script:archiveXMLPath = $NULL
 <###ADMIN###>$script:originalAcceptMessagesFromXMLName="onPremsiesAcceptMessagesFrom.xml"
 <###ADMIN###>$script:originalManagedByXMLName="onPremsiesManagedBy.xml"
 <###ADMIN###>$script:originalRejectMessagesFromXMLName="onPremsiesRejectMessagesFrom.xml"
-<###ADMIN###>$script:originalBypassModerationFromSendersOrMembersXMLName="BypassModerationFromSendersOrMembers.xml"
-<###ADMIN###>$script:originalForwardingAddressXMLName="ForwardAddress.xml"
-<###ADMIN###>$script:originalForwardingSMTPAddressXMLName="ForwardingSMTPAddress.xml"
+<###ADMIN###>$script:originalBypassModerationFromSendersOrMembersXMLName="OnPremisesBypass.xml"
+<###ADMIN###>$script:originalForwardingAddressXMLName="onPremisesForwardAddress.xml"
+<###ADMIN###>$script:originalForwardingSMTPAddressXMLName="onPremisesForwardingSMTPAddress.xml"
 
-<###ADMIN###>$script:onpremisesdlconfigurationMembershipArrayXMLName = "onpremisesdlconfigurationMembership.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationMembershipArrayXMLName = "onpremisesdlconfigurationMembershipArray.xml"
 <###ADMIN###>$script:onpremisesdlconfigurationManagedByArrayXMLName = "onpremisesdlconfigurationManagedBy.xml" 
 <###ADMIN###>$script:onpremisesdlconfigurationModeratedByArrayXMLName = "onpremisesdlconfigurationModeratedBy.xml"
-<###ADMIN###>$script:onpremisesdlconfigurationGrantSendOnBehalfTOArrayXMLName = "onpremisesdlconfigurationGrantSendOnBehalfTO.xml"
-<###ADMIN###>$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembersXMLName = "onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers.xml"
-<###ADMIN###>$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembersXMLName = "onpremisesdlconfigurationRejectMessagesFromSendersOrMembers.xml" 
-<###ADMIN###>$script:onPremsiesDLBypassModerationFromSendersOrMembersXMLName = "onPremsiesDLBypassModerationFromSendersOrMembers.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationGrantSendOnBehalfTOArrayXMLName = "onpremisesdlconfigurationGrant.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembersXMLName = "onpremisesdlconfigurationAccept.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembersXMLName = "onpremisesdlconfigurationReject.xml" 
+<###ADMIN###>$script:onPremsiesDLBypassModerationFromSendersOrMembersXMLName = "onPremsiesDLBypass.xml"
 
 $script:onpremisesdlconfigurationMembershipArrayXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationMembershipArrayXMLName
 $script:onpremisesdlconfigurationManagedByArrayXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationManagedByArrayXMLName 
@@ -261,7 +261,7 @@ $script:newOffice365XML = Join-Path $script:backupXMLPath -ChildPath $script:new
 $script:newOffice365MembershipXML = Join-Path $script:backupXMLPath -ChildPath $script:newOffice365DLConfigurationMembershipXMLName
 $script:onPremisesMemberOfXML = Join-Path $script:backupXMLPath -ChildPath $script:onPremisesMemberOfXMLName
 
-$script:originalGrantSendOnBehalfToXML=Join-Path $script:backupXMLPath -ChildPath $script:onPremisesXML
+$script:originalGrantSendOnBehalfToXML=Join-Path $script:backupXMLPath -ChildPath $script:originalGrantSendOnBehalfToXMLName
 $script:originalAcceptMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalAcceptMessagesFromXMLName
 $script:originalManagedByXML=Join-Path $script:backupXMLPath -ChildPath $script:originalManagedByXMLName
 $script:originalRejectMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalRejectMessagesFromXMLName
@@ -5100,7 +5100,7 @@ Function resetOriginalDistributionListSettings
 
 			#Group had forwarding address on other groups.  Add mail contact to forwarding address.
 
-			$functionArray = $script:originalManagedBy
+			$functionArray = $script:originalForwardingAddress
 
 			foreach ( $member in $functionArray )
             {
@@ -5116,7 +5116,7 @@ Function resetOriginalDistributionListSettings
 					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding forwarding address to the mailbox.... ' -ToScreen
 					Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
 					
-					set-mailbox -identity $member.PrimarySMTPAddress -forwardingAddress $script:onPremisesNewContactConfiguration.identity -domainController $script:adDomainController -BypassSecurityGroupManagerCheck
+					set-mailbox -identity $member.PrimarySMTPAddress -forwardingAddress $script:onPremisesNewContactConfiguration.identity -domainController $script:adDomainController
 				}
 				Catch
 				{
