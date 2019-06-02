@@ -3,17 +3,17 @@
 
 .DISCLAIMER
 
-    THE SAMPLE SCRIPTS ARE NOT SUPPORTED UNDER ANY MICROSOFT STANDARD SUPPORT
-    PROGRAM OR SERVICE. THE SAMPLE SCRIPTS ARE PROVIDED AS IS WITHOUT WARRANTY
-    OF ANY KIND. MICROSOFT FURTHER DISCLAIMS ALL IMPLIED WARRANTIES INCLUDING, WITHOUT
-    LIMITATION, ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR OF FITNESS FOR A PARTICULAR
-    PURPOSE. THE ENTIRE RISK ARISING OUT OF THE USE OR PERFORMANCE OF THE SAMPLE SCRIPTS
-    AND DOCUMENTATION REMAINS WITH YOU. IN NO EVENT SHALL MICROSOFT, ITS AUTHORS, OR
-    ANYONE ELSE INVOLVED IN THE CREATION, PRODUCTION, OR DELIVERY OF THE SCRIPTS BE LIABLE
-    FOR ANY DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS
-    PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR OTHER PECUNIARY LOSS)
-    ARISING OUT OF THE USE OF OR INABILITY TO USE THE SAMPLE SCRIPTS OR DOCUMENTATION,
-    EVEN IF MICROSOFT HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES 
+    THE SAMPLE SCRIPTS ARE NOT SUPPORTED UNDER ANY MICROSOFT STANDARD SUPPORT
+    PROGRAM OR SERVICE. THE SAMPLE SCRIPTS ARE PROVIDED AS IS WITHOUT WARRANTY
+    OF ANY KIND. MICROSOFT FURTHER DISCLAIMS ALL IMPLIED WARRANTIES INCLUDING, WITHOUT
+    LIMITATION, ANY IMPLIED WARRANTIES OF MERCHANTABILITY OR OF FITNESS FOR A PARTICULAR
+    PURPOSE. THE ENTIRE RISK ARISING OUT OF THE USE OR PERFORMANCE OF THE SAMPLE SCRIPTS
+    AND DOCUMENTATION REMAINS WITH YOU. IN NO EVENT SHALL MICROSOFT, ITS AUTHORS, OR
+    ANYONE ELSE INVOLVED IN THE CREATION, PRODUCTION, OR DELIVERY OF THE SCRIPTS BE LIABLE
+    FOR ANY DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS
+    PROFITS, BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR OTHER PECUNIARY LOSS)
+    ARISING OUT OF THE USE OF OR INABILITY TO USE THE SAMPLE SCRIPTS OR DOCUMENTATION,
+    EVEN IF MICROSOFT HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES 
 
 
 .SYNOPSIS
@@ -57,6 +57,10 @@ Note:	This may require enabling basic authentication on one or more endpoints fo
 11)	Recreate the distribution list directly in Exchange Online.
 12)	Stamp all attributes of the on-premises DL to the new DL in Exchange Online.
 13)	Stamp the original legacyExchangeDN to the new DL as an X500 address to preserve reply to functionality.
+14) Assuming convert to contact logic is not overridden continue...
+15)  Delete the DL moved to the converted DL OU.
+16)  Create a dynamic distribution group where the criteria matches a contact that will be created.
+17)  Create a mail contact that uses the onmicrosoft.com address of the group and has custom attributes that match the dynamic DL created.
 
 .INPUTS
 
@@ -116,7 +120,11 @@ In the ad connect invocation function split the importation of the module from t
 
 Redefined the replicate domain controllers function.  It's now broken down into triggering inbound replication and outbound replication from local domain controllers within the site.
 
-
+Version:		1.5
+Author:			Timothy J. McMichael
+Change Date:	May 1st, 2019.
+Purpose/Change:	In this version we correct some of operations.  For example, we update the AD calls to utilize calls that work assuming a non-alias is utilized for the group.
+Additionally new functions have been created to log information regaridng the items created.
 
   
 .EXAMPLE
@@ -155,7 +163,7 @@ Import-Module PSLogging
 $sScriptVersion = "1.2"
 
 #Log File Info
-<###ADMIN###>$script:sLogPath = "C:\Scripts\"
+<###ADMIN###>$script:sLogPath = "C:\Scripts\Working\"
 <###ADMIN###>$script:sLogName = "DLConversion.log"
 <###ADMIN###>$script:sLogFile = Join-Path -Path $sLogPath -ChildPath $sLogName
 
@@ -200,6 +208,7 @@ $script:newOffice365DLConfigurationMembership = $NULL
 [array]$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers = @() #Array of psObjects that represent accept messages only from senders or members membership.
 [array]$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers = @() #Array of psObjects that represent reject messages only from senders or members membership.
 [array]$script:onPremsiesDLBypassModerationFromSendersOrMembers = @() #Array of psObjects that represent bypass moderation only from senders or members membership.
+
 $script:newOffice365DLConfiguration=$NULL
 $script:x500Address=$NULL
 
@@ -213,17 +222,52 @@ $script:x500Address=$NULL
 
 #Establish script variables to backup distribution list information.
 
-<###ADMIN###>$script:backupXMLPath = "C:\Scripts\" #Location of backup XML files.
+<###ADMIN###>$script:backupXMLPath = "C:\Scripts\Working\" #Location of backup XML files.
+$script:archiveXMLPath = $NULL
 <###ADMIN###>$script:onpremisesdlconfigurationXMLName = "onpremisesdlConfiguration.XML" #On premises XML file name.
 <###ADMIN###>$script:office365DLXMLName = "office365DLConfiguration.XML" #Cloud XML file name.
 <###ADMIN###>$script:onPremsiesDLConfigurationMembershipXMLName = "onpremisesDLConfigurationMembership.XML"
 <###ADMIN###>$script:newOffice365DLConfigurationXMLName = "newOffice365DLConfiguration.XML"
 <###ADMIN###>$script:newOffice365DLConfigurationMembershipXMLName = "newOffice365DLConfigurationMembership.XML"
+<###ADMIN###>$script:onPremisesMemberOfXMLName = "onPremsiesMemberOf.XML"
+<###ADMIN###>$script:originalGrantSendOnBehalfToXMLName="onPremsiesGrantSendOnBehalfTo.xml"
+<###ADMIN###>$script:originalAcceptMessagesFromXMLName="onPremsiesAcceptMessagesFrom.xml"
+<###ADMIN###>$script:originalManagedByXMLName="onPremsiesManagedBy.xml"
+<###ADMIN###>$script:originalRejectMessagesFromXMLName="onPremsiesRejectMessagesFrom.xml"
+<###ADMIN###>$script:originalBypassModerationFromSendersOrMembersXMLName="OnPremisesBypass.xml"
+<###ADMIN###>$script:originalForwardingAddressXMLName="onPremisesForwardAddress.xml"
+<###ADMIN###>$script:originalForwardingSMTPAddressXMLName="onPremisesForwardingSMTPAddress.xml"
+
+<###ADMIN###>$script:onpremisesdlconfigurationMembershipArrayXMLName = "onpremisesdlconfigurationMembershipArray.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationManagedByArrayXMLName = "onpremisesdlconfigurationManagedBy.xml" 
+<###ADMIN###>$script:onpremisesdlconfigurationModeratedByArrayXMLName = "onpremisesdlconfigurationModeratedBy.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationGrantSendOnBehalfTOArrayXMLName = "onpremisesdlconfigurationGrant.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembersXMLName = "onpremisesdlconfigurationAccept.xml"
+<###ADMIN###>$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembersXMLName = "onpremisesdlconfigurationReject.xml" 
+<###ADMIN###>$script:onPremsiesDLBypassModerationFromSendersOrMembersXMLName = "onPremsiesDLBypass.xml"
+
+$script:onpremisesdlconfigurationMembershipArrayXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationMembershipArrayXMLName
+$script:onpremisesdlconfigurationManagedByArrayXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationManagedByArrayXMLName 
+$script:onpremisesdlconfigurationModeratedByArrayXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationModeratedByArrayXMLName
+$script:onpremisesdlconfigurationGrantSendOnBehalfTOArrayXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationGrantSendOnBehalfTOArrayXMLName
+$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembersXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembersXMLName
+$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembersXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembersXMLName
+$script:onPremsiesDLBypassModerationFromSendersOrMembersXMLPath = Join-Path $script:backupXMLPath -ChildPath $script:onPremsiesDLBypassModerationFromSendersOrMembersXMLName
+
 $script:onPremisesXML = Join-Path $script:backupXMLPath -ChildPath $script:onpremisesdlconfigurationXMLName #Full path to on premises XML.
 $script:office365XML = Join-Path $script:backupXMLPath -ChildPath $script:office365DLXMLName #Full path to cloud XML.
 $script:onPremsiesMembershipXML = Join-Path $script:backupXMLPath -ChildPath $script:onPremsiesDLConfigurationMembershipXMLName
 $script:newOffice365XML = Join-Path $script:backupXMLPath -ChildPath $script:newOffice365DLConfigurationXMLName
 $script:newOffice365MembershipXML = Join-Path $script:backupXMLPath -ChildPath $script:newOffice365DLConfigurationMembershipXMLName
+$script:onPremisesMemberOfXML = Join-Path $script:backupXMLPath -ChildPath $script:onPremisesMemberOfXMLName
+
+$script:originalGrantSendOnBehalfToXML=Join-Path $script:backupXMLPath -ChildPath $script:originalGrantSendOnBehalfToXMLName
+$script:originalAcceptMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalAcceptMessagesFromXMLName
+$script:originalManagedByXML=Join-Path $script:backupXMLPath -ChildPath $script:originalManagedByXMLName
+$script:originalRejectMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalRejectMessagesFromXMLName
+$script:originalBypassModerationFromSendersOrMembersXML=Join-Path $script:backupXMLPath -ChildPath $script:originalBypassModerationFromSendersOrMembersXMLName
+$script:originalForwardingSMTPAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingSMTPAddressXMLName
+$script:originalForwardingAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingAddressXMLName
 
 #Establish misc.
 
@@ -237,12 +281,19 @@ $script:onPremisesMovedDLConfiguration = $NULL	#Holds the seetings of the distri
 [array]$script:originalGrantSendOnBehalfTo = @()  #Holds all distribution lists where the converted DL had grant send on behalf rights.
 [array]$script:originalAcceptMessagesFrom = @()  #HOlds all the distribution lists where the converted DL had accept messages from rights.
 [array]$script:originalRejectMessagesFrom = @()  #HOlds all the distribution lists where the converted DL had reject messages from rights.
+[array]$script:originalForwardingAddress = @()
+[array]$script:originalForwardingSMTPAddress = @()
 [array]$script:originalBypassModerationFromSendersOrMembers = @()
 [array]$script:originalManagedBy = @()
 $script:randomContactName = $NULL
 $script:remoteRoutingAddress = $NULL
 $script:wellKnownSelfAccountSid = "S-1-5-10"
 $script:onPremisesNewContactConfiguration = $NULL
+
+$script:arrayCounter=0
+$script:arrayGUID=$NULL
+
+$script:newDynamicDLAddress
 
 #-----------------------------------------------------------[Functions]------------------------------------------------------------
 
@@ -725,7 +776,7 @@ Function removeOffice365PowerShellSession
 <#
 *******************************************************************************************************
 
-Function removeOffice365PowerShellSession
+Function removeOnPremisesPowershellSession
 
 .DESCRIPTION
 
@@ -1472,7 +1523,7 @@ Function collectNewOffice365DLInformation
 <#
 *******************************************************************************************************
 
-Function collectNewOffice365DLInformation
+Function collectNewOffice365DLMemberInformation
 
 .DESCRIPTION
 
@@ -1916,6 +1967,424 @@ Function backupOffice365DLConfiguration
 <#
 *******************************************************************************************************
 
+Function backupOnPremisesMemberOf
+
+.DESCRIPTION
+
+This function records the groups that the migrated group is a member of.
+
+.PARAMETER <Parameter_Name>
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function backupOnPremisesMemberOf
+{
+	Param ()
+
+	Begin 
+	{
+	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function records the groups that the migrated group is a member of to XML...' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+			if ( $script:onPremisesDLMemberOf -ne $NULL )
+			{
+				$script:onPremisesDLMemberOf | Export-CLIXML -Path $script:onPremisesMemberOfXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The on premises member of for the migrated group has been recorded to XML.' -toscreen
+            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+
+			Write-LogError -LogPath $script:sLogFile -Message "The on premises member of for the migrated group could not be recorded to XML." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function backupOnPremisesMultiValuedAttributes
+
+.DESCRIPTION
+
+This function records the multi-valued attributes of the DLs where permissions are set on premises.
+
+.PARAMETER <Parameter_Name>
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function backupOnPremisesMultiValuedAttributes
+{
+	Param ()
+
+	Begin 
+	{
+	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function records multivalued attributes that the migrated group is a member of to XML...' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+			if ( $script:originalGrantSendOnBehalfTo -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing grant send on behalf to to XML...' -toscreen
+				$script:originalGrantSendOnBehalfTo | Export-CLIXML -Path $script:originalGrantSendOnBehalfToXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ($script:originalAcceptMessagesFrom -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing accept messages from  to to XML...' -toscreen
+				$script:originalAcceptMessagesFrom | Export-CLIXML -Path $script:originalAcceptMessagesFromXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:originalManagedBy -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing managed by to to XML...' -toscreen
+				$script:originalManagedBy | Export-CLIXML -Path $script:originalManagedByXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:originalRejectMessagesFrom -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing reject messages from to XML...' -toscreen
+				$script:originalRejectMessagesFrom | Export-CLIXML -Path $script:originalRejectMessagesFromXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:originalBypassModerationFromSendersOrMembers -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing bypass mdoeration to XML...' -toscreen
+				$script:originalBypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:originalBypassModerationFromSendersOrMembersXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:originalForwardingAddress -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing forwarding address to XML...' -toscreen
+				$script:originalForwardingAddress | Export-CLIXML -Path $script:originalForwardingAddressXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The on premises multivalued attributes for the migrated group has been recorded to XML.' -toscreen
+            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+
+			Write-LogError -LogPath $script:sLogFile -Message "The on premises multivalued attributes for the migrated group could not be recorded to XML." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function backupOnPremisesDLArrays
+
+.DESCRIPTION
+
+This function backs up all the calculated array objects for the DL.
+
+.PARAMETER <Parameter_Name>
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function backupOnPremisesDLArrays
+{
+	Param ()
+
+	Begin 
+	{
+	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function backs up all the calculated array objects for the DL....' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+			if ( $script:onpremisesdlconfigurationMembershipArray -ne $NULL )
+			{
+				$script:onpremisesdlconfigurationMembershipArray | Export-CLIXML -Path $script:onpremisesdlconfigurationMembershipArrayXMLPath
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ($script:onpremisesdlconfigurationManagedByArray -ne $NULL )
+			{
+				$script:onpremisesdlconfigurationManagedByArray | Export-CLIXML -Path $script:onpremisesdlconfigurationManagedByArrayXMLPath
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:onpremisesdlconfigurationModeratedByArray -ne $NULL )
+			{
+				$script:onpremisesdlconfigurationModeratedByArray | Export-CLIXML -Path $script:onpremisesdlconfigurationModeratedByArrayXMLPath
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:onpremisesdlconfigurationGrantSendOnBehalfTOArray -ne $NULL )
+			{
+				$script:onpremisesdlconfigurationGrantSendOnBehalfTOArray | Export-CLIXML -Path $script:onpremisesdlconfigurationGrantSendOnBehalfTOArrayXMLPath
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers -ne $NULL )
+			{
+				$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers | Export-CLIXML -Path $script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembersXMLPath
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers -ne $NULL )
+			{
+				$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers | Export-CLIXML -Path $script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembersXMLPath 
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			if ( $script:onPremsiesDLBypassModerationFromSendersOrMembers -ne $NULL )
+			{
+				$script:onPremsiesDLBypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:onPremsiesDLBypassModerationFromSendersOrMembersXMLPath
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The on premises multivalued attributes for the migrated group has been recorded to XML.' -toscreen
+            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+
+			Write-LogError -LogPath $script:sLogFile -Message "The on premises multivalued attributes for the migrated group could not be recorded to XML." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function archiveFiles
+
+.DESCRIPTION
+
+This function archives the migrated DL files.
+
+.PARAMETER <Parameter_Name>
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function archiveFiles
+{
+	Param ()
+
+	Begin 
+	{
+		$functionDate = Get-Date -Format FileDateTime
+		$script:archiveXMLPath = $script:onpremisesdlConfiguration.alias + $functionDate
+	}
+	Process 
+	{
+		Try 
+		{
+			rename-item –path $script:sLogPath –newname $script:archiveXMLPath
+		}
+		Catch 
+		{
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-Host "No Error Archive"
+		}
+		else
+		{
+			Write-Host "Error"
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
 Function backupOnPremisesdlMembership
 
 .DESCRIPTION
@@ -2144,6 +2613,7 @@ Function buildMembershipArray
 							Alias = $functionRecipient.Alias
 							Name = $functionRecipient.Name
 							PrimarySMTPAddressOrUPN = $functionRecipient.CustomAttribute2
+							GUID = $NULL
 							RecipientType = "MailUniversalDistributionGroup"
 							RecipientOrUser = "Recipient"
 						}
@@ -2156,6 +2626,7 @@ Function buildMembershipArray
 							Alias = $functionRecipient.Alias
 							Name = $functionRecipient.Name
 							PrimarySMTPAddressOrUPN = $functionRecipient.PrimarySMTPAddress
+							GUID = $NULL
 							RecipientType = $functionRecipient.RecipientType
 							RecipientOrUser = "Recipient"
 						}
@@ -2173,6 +2644,7 @@ Function buildMembershipArray
 						Alias = $NULL
 						Name = $functionRecipient.Name
 						PrimarySMTPAddressOrUPN = $functionUser.UserprincipalName
+						GUID = $NULL
 						RecipientType = "User"
 						RecipientOrUser = "User"
 					}
@@ -2224,6 +2696,7 @@ Function buildMembershipArray
 							Alias = $functionRecipient.Alias
 							Name = $functionRecipient.Name
 							PrimarySMTPAddressOrUPN = $functionRecipient.CustomAttribute2
+							GUID = $NULL
 							RecipientType = "MailUniversalDistributionGroup"
 							RecipientOrUser = "Recipient"
 						}
@@ -2236,6 +2709,7 @@ Function buildMembershipArray
 							Alias = $functionRecipient.Alias
 							Name = $functionRecipient.Name
 							PrimarySMTPAddressOrUPN = $functionRecipient.PrimarySMTPAddress
+							GUID = $NULL
 							RecipientType = $functionRecipient.RecipientType
 							RecipientOrUser = "Recipient"
 						}
@@ -2288,6 +2762,7 @@ Function buildMembershipArray
 							Alias = $functionRecipient.Alias
 							Name = $functionRecipient.Name
 							PrimarySMTPAddressOrUPN = $functionRecipient.CustomAttribute2
+							GUID = $NULL
 							RecipientType = "MailUniversalDistributionGroup"
 							RecipientOrUser = "Recipient"
 						}
@@ -2300,6 +2775,7 @@ Function buildMembershipArray
 							Alias = $functionRecipient.Alias
 							Name = $functionRecipient.Name
 							PrimarySMTPAddressOrUPN = $functionRecipient.PrimarySMTPAddress
+							GUID=$NULL
 							RecipientType = $functionRecipient.RecipientType
 							RecipientOrUser = "Recipient"
 						}
@@ -2443,15 +2919,37 @@ Function testOffice365Recipient
 
 			Write-LogInfo -LogPath $script:sLogFile -Message "Testing user in Office 365..." -ToScreen
 			Write-LogInfo -LogPath $script:sLogFile -Message $primarySMTPAddressOrUPN -ToScreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $UserorRecipient
+			Write-LogInfo -LogPath $script:sLogFile -Message $UserorRecipient -toScreen
 			
 			if ( $UserorRecipient -eq "Recipient")
 			{
-				$functionTest=get-o365Recipient -identity $primarySMTPAddressOrUPN
+				$functionCommand = "get-o365recipient -filter {primarySMTPAddress -eq '$primarySMTPAddressOrUPN'}"
+
+				$functionTest = Invoke-Expression $functionCommand
+
+				if ( !$functionTest )
+				{
+					throw ("User or recipient not found in office 365 - all recipients and users must be in Office 365 - " + $primarySMTPAddress )
+				}
+            	
+				Write-LogInfo -LogPath $script:sLogFile -Message $functionTest.GUID -toScreen
+				$script:arrayGUID = $functionTest.GUID.tostring()
+                Write-LogInfo -LogPath $script:sLogFile -Message $script:arrayGUID -toScreen
 			}
 			elseif ($UserorRecipient -eq "User")
 			{
-				$functionTest=get-o365User -identity $primarySMTPAddressOrUPN
+				$functionCommand = "get-o365User -filter {userPrincipalName -eq '$primarySMTPAddressOrUPN'}"
+
+				$functionTest=invoke-expression $functionCommand
+
+				if ( !$functionTest )
+				{
+					throw ("User or recipient not found in office 365 - all recipients and users must be in Office 365 - " + $primarySMTPAddress )
+				}
+
+				Write-LogInfo -LogPath $script:sLogFile -Message $functionTest.GUID -ToScreen
+				$script:arrayGUID = $functionTest.GUID.tostring()
+                Write-LogInfo -LogPath $script:sLogFile -Message $script:arrayGUID -toScreen
 			}
 		}
 		Catch 
@@ -2837,7 +3335,7 @@ Function createOffice365DistributionList
 	{
 		Try 
 		{
-			new-o365DistributionGroup -name $script:onpremisesdlConfiguration.Name -alias $script:onpremisesdlConfiguration.Alias -primarySMTPAddress $script:onpremisesdlConfiguration.PrimarySmtpAddress -type $functionGroupType
+			new-o365DistributionGroup -name $script:onpremisesdlConfiguration.Name -alias $script:onpremisesdlConfiguration.Alias -type $functionGroupType
 		}
 		Catch 
 		{
@@ -2919,9 +3417,38 @@ Function setOffice365DistributionListSettings
 	{
 		Try 
 		{
-			Set-O365DistributionGroup -Identity $script:onpremisesdlConfiguration.primarySMTPAddress -BypassNestedModerationEnabled $script:onpremisesdlconfiguration.BypassNestedModerationEnabled -MemberJoinRestriction $script:onpremisesdlconfiguration.MemberJoinRestriction -MemberDepartRestriction $functionMemberDepartRestriction -ReportToManagerEnabled $script:onpremisesdlconfiguration.ReportToManagerEnabled -ReportToOriginatorEnabled $script:onpremisesdlconfiguration.ReportToOriginatorEnabled -SendOofMessageToOriginatorEnabled $script:onpremisesdlconfiguration.SendOofMessageToOriginatorEnabled -Alias $script:onpremisesdlconfiguration.Alias -CustomAttribute1 $script:onpremisesdlconfiguration.CustomAttribute1 -CustomAttribute10 $script:onpremisesdlconfiguration.CustomAttribute10 -CustomAttribute11 $script:onpremisesdlconfiguration.CustomAttribute11 -CustomAttribute12 $script:onpremisesdlconfiguration.CustomAttribute12 -CustomAttribute13 $script:onpremisesdlconfiguration.CustomAttribute13 -CustomAttribute14 $script:onpremisesdlconfiguration.CustomAttribute14 -CustomAttribute15 $script:onpremisesdlconfiguration.CustomAttribute15 -CustomAttribute2 $script:onpremisesdlconfiguration.CustomAttribute2 -CustomAttribute3 $script:onpremisesdlconfiguration.CustomAttribute3 -CustomAttribute4 $script:onpremisesdlconfiguration.CustomAttribute4 -CustomAttribute5 $script:onpremisesdlconfiguration.CustomAttribute5 -CustomAttribute6 $script:onpremisesdlconfiguration.CustomAttribute6 -CustomAttribute7 $script:onpremisesdlconfiguration.CustomAttribute7 -CustomAttribute8 $script:onpremisesdlconfiguration.CustomAttribute8 -CustomAttribute9 $script:onpremisesdlconfiguration.CustomAttribute9 -ExtensionCustomAttribute1 $script:onpremisesdlconfiguration.ExtensionCustomAttribute1 -ExtensionCustomAttribute2 $script:onpremisesdlconfiguration.ExtensionCustomAttribute2 -ExtensionCustomAttribute3 $script:onpremisesdlconfiguration.ExtensionCustomAttribute3 -ExtensionCustomAttribute4 $script:onpremisesdlconfiguration.ExtensionCustomAttribute4 -ExtensionCustomAttribute5 $script:onpremisesdlconfiguration.ExtensionCustomAttribute5 -DisplayName $script:onpremisesdlconfiguration.DisplayName -EmailAddresses $functionEmailAddresses -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -ModerationEnabled $script:onpremisesdlconfiguration.ModerationEnabled -RequireSenderAuthenticationEnabled $script:onpremisesdlconfiguration.RequireSenderAuthenticationEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -SendModerationNotifications $script:onpremisesdlconfiguration.SendModerationNotifications -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -MailTipTranslations $script:onpremisesdlconfiguration.MailTipTranslations -Name $script:onpremisesdlconfiguration.Name
+			Set-O365DistributionGroup -Identity $script:onpremisesdlConfiguration.alias -BypassNestedModerationEnabled $script:onpremisesdlconfiguration.BypassNestedModerationEnabled -MemberJoinRestriction $script:onpremisesdlconfiguration.MemberJoinRestriction -MemberDepartRestriction $functionMemberDepartRestriction -ReportToManagerEnabled $script:onpremisesdlconfiguration.ReportToManagerEnabled -ReportToOriginatorEnabled $script:onpremisesdlconfiguration.ReportToOriginatorEnabled -SendOofMessageToOriginatorEnabled $script:onpremisesdlconfiguration.SendOofMessageToOriginatorEnabled -Alias $script:onpremisesdlconfiguration.Alias -CustomAttribute1 $script:onpremisesdlconfiguration.CustomAttribute1 -CustomAttribute10 $script:onpremisesdlconfiguration.CustomAttribute10 -CustomAttribute11 $script:onpremisesdlconfiguration.CustomAttribute11 -CustomAttribute12 $script:onpremisesdlconfiguration.CustomAttribute12 -CustomAttribute13 $script:onpremisesdlconfiguration.CustomAttribute13 -CustomAttribute14 $script:onpremisesdlconfiguration.CustomAttribute14 -CustomAttribute15 $script:onpremisesdlconfiguration.CustomAttribute15 -CustomAttribute2 $script:onpremisesdlconfiguration.CustomAttribute2 -CustomAttribute3 $script:onpremisesdlconfiguration.CustomAttribute3 -CustomAttribute4 $script:onpremisesdlconfiguration.CustomAttribute4 -CustomAttribute5 $script:onpremisesdlconfiguration.CustomAttribute5 -CustomAttribute6 $script:onpremisesdlconfiguration.CustomAttribute6 -CustomAttribute7 $script:onpremisesdlconfiguration.CustomAttribute7 -CustomAttribute8 $script:onpremisesdlconfiguration.CustomAttribute8 -CustomAttribute9 $script:onpremisesdlconfiguration.CustomAttribute9 -ExtensionCustomAttribute1 $script:onpremisesdlconfiguration.ExtensionCustomAttribute1 -ExtensionCustomAttribute2 $script:onpremisesdlconfiguration.ExtensionCustomAttribute2 -ExtensionCustomAttribute3 $script:onpremisesdlconfiguration.ExtensionCustomAttribute3 -ExtensionCustomAttribute4 $script:onpremisesdlconfiguration.ExtensionCustomAttribute4 -ExtensionCustomAttribute5 $script:onpremisesdlconfiguration.ExtensionCustomAttribute5 -DisplayName $script:onpremisesdlconfiguration.DisplayName -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -ModerationEnabled $script:onpremisesdlconfiguration.ModerationEnabled -RequireSenderAuthenticationEnabled $script:onpremisesdlconfiguration.RequireSenderAuthenticationEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -SendModerationNotifications $script:onpremisesdlconfiguration.SendModerationNotifications -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -MailTipTranslations $script:onpremisesdlconfiguration.MailTipTranslations -Name $script:onpremisesdlconfiguration.Name
 		}
 		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		try 
+		{
+			write-LogInfo -LogPath $script:sLogFile -message "Processing primary proxy address.." -ToScreen
+			Write-LogInfo -logPath $script:sLogFile -message $script:onpremisesdlConfiguration.primarySMTPAddress -ToScreen
+			set-O365DistributionGroup -identity $script:onpremisesdlConfiguration.alias -primarySMTPAddress $script:onpremisesdlConfiguration.primarySMTPAddress
+		}
+		catch
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		try
+		{
+			foreach ( $address in $functionEmailAddresses )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -message "Processing email address.." -ToScreen
+				Write-LogInfo -logPath $script:sLogFile -message $address -ToScreen
+				set-O365DistributionGroup -identity $script:onpremisesdlConfiguration.primarySMTPAddress -EmailAddresses @{add=$address}
+			}
+		}
+		catch 
 		{
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
@@ -3209,7 +3736,7 @@ Function recordDistributionGroupMembership
 		{
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Invoking AD call to domain controller to pull membership of the group on premises...' -toscreen
 
-			$script:onPremisesDLMemberOf = Invoke-Command -ScriptBlock { get-ADPrincipalGroupMembership -identity $args[0] } -ArgumentList $dlToConvert -Session $script:onPremisesADDomainControllerPowerShellSession
+			$script:onPremisesDLMemberOf = Invoke-Command -ScriptBlock { get-ADPrincipalGroupMembership -identity $args[0] } -ArgumentList $script:onPremisesMovedDLConfiguration.samAccountName -Session $script:onPremisesADDomainControllerPowerShellSession
 		
 			foreach ( $member in $script:onPremisesDLMemberOf )
 			{
@@ -3491,6 +4018,28 @@ Function recordOriginalMultivaluedAttributes
 			Stop-Log -LogPath $script:sLogFile -ToScreen
 			Break
 		}
+		Try 
+		{
+			#Using a filter to determine all mailboxes that have forwardingAddress set to the distribution group.
+
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all forwarding addresses for the identity...' -toscreen
+
+            $functionCommand = "get-mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$functionGroupIdentity' } -domainController '$script:adDomainController'"
+            
+            $script:originalForwardingAddress = Invoke-Expression $functionCommand
+		
+			foreach ( $member in $script:originalForwardingAddress )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message $member.primarySMTPAddress -ToScreen
+			}
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
 	}
 }
 
@@ -3601,6 +4150,12 @@ Function createOnPremisesDynamicDistributionGroup
 		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function createOnPremisesDynamicDistributionGroup...' -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message 'This function creates the on premsies mail enabled contact to replace the distribution group.' -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+
+		$functionEmailAddressSplit = $script:onpremisesdlConfiguration.primarySMTPAddress.split("@")
+		$script:newDynamicDLAddress = $functionEmailAddressSplit[0]+"-Dynamic"+"@"+$functionEmailAddressSplit[1]
+
+		Write-LogInfo -LogPath $script:sLogFile -Message "The identitied dynamic DL email address..." -ToScreen
+		Write-LogInfo -LogPath $script:sLogFile -Message $script:newDynamicDLAddress -ToScreen
 	}
 	Process 
 	{
@@ -3608,7 +4163,7 @@ Function createOnPremisesDynamicDistributionGroup
 		{
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Creating dynamic distribution group...' -toscreen
 
-			new-dynamicDistributionGroup -name $script:onpremisesdlConfiguration.name -primarySMTPAddress $script:onpremisesdlConfiguration.primarySMTPAddress -organizationalUnit $script:groupOrganizationalUnit -domainController $script:adDomainController -includedRecipients AllRecipients -conditionalCustomAttribute2 $script:onpremisesdlConfiguration.primarySMTPAddress
+			new-dynamicDistributionGroup -name $script:onpremisesdlConfiguration.name -Alias $script:onpremisesdlconfiguration.Alias -primarySMTPAddress $script:newDynamicDLAddress -organizationalUnit $script:groupOrganizationalUnit -domainController $script:adDomainController -includedRecipients AllRecipients -conditionalCustomAttribute2 $script:onpremisesdlConfiguration.primarySMTPAddress -DisplayName $script:onpremisesdlconfiguration.DisplayName
 		}
 		Catch 
 		{
@@ -3706,7 +4261,26 @@ Function setOnPremisesDynamicDistributionGroupSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Apply the settings to the dynamic distribution group...' -toscreen
 
-			set-dynamicDistributionGroup -identity $script:onpremisesdlConfiguration.primarySMTPAddress -Alias $script:onpremisesdlconfiguration.Alias -DisplayName $script:onpremisesdlconfiguration.DisplayName -EmailAddresses $functionEmailAddresses -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -WindowsEmailAddress $script:onpremisesdlconfiguration.WindowsEmailAddress -Name $script:onpremisesdlconfiguration.Name -domaincontroller $script:adDomainController -RequireSenderAuthenticationEnabled $FALSE
+			set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -primarySMTPAddress $script:newDynamicDLAddress -HiddenFromAddressListsEnabled $script:onpremisesdlconfiguration.HiddenFromAddressListsEnabled -SimpleDisplayName $script:onpremisesdlconfiguration.SimpleDisplayName -WindowsEmailAddress $script:newDynamicDLAddress -Name $script:onpremisesdlconfiguration.Name -domaincontroller $script:adDomainController -RequireSenderAuthenticationEnabled $FALSE
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+		Try 
+		{
+			#Adding each email address from the original DL to the new dynamic DL.
+
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Adding original proxy addresses to the dynamic DL...' -toscreen
+
+			foreach ( $address in $functionEmailAddresses )
+			{
+				$address = $address.tolower()
+				set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -EmailAddresses @{add=$address} -domaincontroller $script:adDomainController
+			}
 		}
 		Catch 
 		{
@@ -3721,7 +4295,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Remvoe the remote routing address from the list of proxy addresses...' -toscreen
 
-			set-dynamicDistributionGroup -identity $script:onpremisesdlConfiguration.primarySMTPAddress -EmailAddresses @{remove=$script:remoteRoutingAddress}  -domaincontroller $script:adDomainController
+			set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -EmailAddresses @{remove=$script:remoteRoutingAddress}  -domaincontroller $script:adDomainController
 		}
 		Catch 
 		{
@@ -3737,7 +4311,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Set the dynamic distribution group scope to the OU where the gorup originally resided...' -toscreen
 
-			set-dynamicDistributionGroup -identity $script:onpremisesdlConfiguration.primarySMTPAddress -recipientContainer $script:onpremisesdlConfiguration.organizationalUnit  -domaincontroller $script:adDomainController
+			set-dynamicDistributionGroup -identity $script:newDynamicDLAddress -recipientContainer $script:onpremisesdlConfiguration.organizationalUnit  -domaincontroller $script:adDomainController
 		}
 		Catch 
 		{
@@ -3761,6 +4335,110 @@ Function setOnPremisesDynamicDistributionGroupSettings
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function setOnPremisesDynamicDistributionGroupSettings...' -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message "The properties could not be set successfully." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function createAndUpdateMailOnMicrosoftAddress
+
+.DESCRIPTION
+
+This function creates a mail.onmicrosoft.com address and adds it to the group in Office 365.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function createAndUpdateMailOnMicrosoftAddress
+{
+	Param ()
+
+	Begin 
+	{
+		$functionContactRemoteAddress = $NULL
+		$functionEmailAddresses = $NULL	#Utilized to hold working email addresses in the function.
+
+		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function createAndUpdateMailOnMicrosoftAddress...' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message 'THis function creates a mail.onmicrosoft.com address for the group and updates Office 365.' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+
+		$functionEmailAddresses = $script:newOffice365DLConfiguration.emailAddresses
+
+		#Iterate through all proxy addresses to find the remote routing address.
+		#This needs to be removed so that it can be stamped on the mail contact matching this group.
+		
+		foreach ( $emailAddress in $functionEmailAddresses)
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Iterating through proxy addresses to find onmicrosoft.com address...' -toscreen
+
+			if ( $emailAddress -like "*.onmicrosoft.com" )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'The onmicrosoft.com address has been found...' -toscreen
+
+				$functionContactRemoteAddress=$emailAddress
+			}
+		}
+
+		#We now have the onmicrosoft.com address stamped on all objects created in the service.
+		#Now we need to take this address and convert it into a mail.onmicrosoft.com address.
+		#First split at the @ then split at the . so we can inject the mail portion of the address.
+		#Then take the entire address and make it lower case.
+
+		$functionContactRemoteAddress = $functionContactRemoteAddress -split "@"
+
+		$functionContactRemoteAddress = $functionContactRemoteAddress -split "\."
+
+		$script:remoteRoutingAddress = $functionContactRemoteAddress[0] + "@" + $functionContactRemoteAddress[1] + ".mail." + $functionContactRemoteAddress[2] + "." + $functionContactRemoteAddress[3]
+
+		$script:remoteRoutingAddress = $script:remoteRoutingAddress.ToLower()
+	}
+	Process 
+	{
+		Try 
+		{
+			set-O365DistributionGroup -identity $script:newOffice365DLConfiguration.Alias -EmailAddresses @{add=$script:remoteRoutingAddress}
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Exiting function createAndUpdateMailOnMicrosoftAddress...' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The Address was successfully created and updated.' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function createAndUpdateMailOnMicrosoftAddress...' -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message "The address could not be updated." -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
@@ -3815,6 +4493,17 @@ Function createRemoteRoutingContact
 		#Set the OU to create the contact to match the OU of the original group.
 
 		$functionOrganizationalUnit = $script:onpremisesdlConfiguration.organizationalUnit
+
+		#In the function where we provision the dynamic ditribution group we capture the mail.onmicrosoft.com address.
+		#This address should be used on the mail contact as the remote routing address.
+		#It is possible that depending on email address policy configuration groups did not get a mail.onmicrosoft.com address when the hybrid configuration wizard was run.
+		#This results in the group not having the address in the service.
+		#If thhis is the case - we need to create one to ensure the secured connector it utilized cross premises.
+
+		if ( $script:remoteRoutingAddress -eq $NULL )
+		{
+			createAndUpdateMailOnMicrosoftAddress
+		}
 	}
 	Process 
 	{
@@ -4404,6 +5093,40 @@ Function resetOriginalDistributionListSettings
 				}
 			}
 		}
+
+		if ( $script:originalForwardingAddress -ne $NULL )
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing forwading address...' -toscreen
+
+			#Group had forwarding address on other groups.  Add mail contact to forwarding address.
+
+			$functionArray = $script:originalForwardingAddress
+
+			foreach ( $member in $functionArray )
+            {
+				#Get the distribution list that had the group originall on bypass full bypass list to a variable.
+
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding forwarding Address... ' -toscreen
+				Write-LogInfo -LogPath $script:sLogFile $member.PrimarySMTPAddress -ToScreen
+
+				Try
+				{
+					#Set the forwarding address of the mailbox.
+
+					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding forwarding address to the mailbox.... ' -ToScreen
+					Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
+					
+					set-mailbox -identity $member.PrimarySMTPAddress -forwardingAddress $script:onPremisesNewContactConfiguration.identity -domainController $script:adDomainController
+				}
+				Catch
+				{
+					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+					cleanupSessions
+					Stop-Log -LogPath $script:sLogFile -ToScreen
+					Break
+				}
+			}
+		}
 	}
 	End 
 	{
@@ -4431,6 +5154,8 @@ Function resetOriginalDistributionListSettings
 #-----------------------------------------------------------[Execution]------------------------------------------------------------
 
 #Create log file for operations within this script.
+
+New-Item -ItemType Directory -Path $script:sLogPath -Force
 
 Start-Log -LogPath $script:sLogPath -LogName $script:sLogName -ScriptVersion $script:sScriptVersion -ToScreen
 
@@ -4483,6 +5208,7 @@ if ( $script:onpremisesdlconfigurationMembership -ne $NULL )
 	}
 	
 	$script:forCounter=0
+	$script:arrayCounter=0
 	
 	foreach ($member in $script:onpremisesdlconfigurationMembershipArray)
 	{
@@ -4494,12 +5220,22 @@ if ( $script:onpremisesdlconfigurationMembership -ne $NULL )
 
 		testOffice365Recipient ($member.PrimarySMTPAddressOrUPN) ($member.RecipientorUser)
 
+		#It was discovered in a customers environment that the distribution list commands set and add aren't near as specific as other Exchange commands.
+		#This means that when you have two users whos SMTP addresses were very similar - you would often get errors during the conversation that adding a member of setting a DL property found multiple users.
+		#We added an array counter to each function that counts where were at in processing the member array.
+		#Since the test function gets the recipient from office 365 - we now capture the GUID of the object.  This is added to the GUID section of the object created before.
+		#We will modify moving forward to add members and set attributes via object GUID - instead of the normalized SMTP address.
+		#Use of script based variables here was kinda hokie - but it works.
+
+		$script:onpremisesdlconfigurationMembershipArray[$script:arrayCounter].GUID=$script:arrayGUID
+
 		if ( ( $member.recipientType -eq "MailUniversalSecurityGroup" ) -or ($member.recipientType -eq "MailUniversalDistributionGroup") )
 		{
 			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
         }
         
-        $script:forCounter+=1
+		$script:forCounter+=1
+		$script:arrayCounter+=1
     }
 }
 
@@ -4514,6 +5250,8 @@ if ( $script:onpremisesdlConfiguration.ManagedBy -ne $NULL )
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
 
+	$script:arrayCounter=0
+
 	foreach ($member in $script:onpremisesdlconfigurationManagedByArray)
 	{
 		testOffice365Recipient ($member.PrimarySMTPAddressOrUPN) ($member.RecipientorUser)
@@ -4522,6 +5260,10 @@ if ( $script:onpremisesdlConfiguration.ManagedBy -ne $NULL )
 		{
 			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
 		}
+
+		$script:onpremisesdlconfigurationManagedByArray[$script:arrayCounter].GUID = $script:arrayGUID
+
+		$script:arrayCounter+=1
 	}
 }
 
@@ -4533,8 +5275,10 @@ if ( $script:onpremisesdlConfiguration.ModeratedBy -ne $NULL )
     
     if ( $script:onpremisesdlConfiguration.ModeratedBy.count -gt 1000 )
 	{
-		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
+		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.O
 	}
+
+	$script:arrayCounter=0
 
 	foreach ($member in $script:onpremisesdlconfigurationModeratedByArray)
 	{
@@ -4544,6 +5288,10 @@ if ( $script:onpremisesdlConfiguration.ModeratedBy -ne $NULL )
 		{
 			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
 		}
+
+		$script:onpremisesdlconfigurationModeratedByArray[$script:arrayCounter].GUID = $script:arrayGUID
+
+		$script:arrayCounter+=1
 	}
 }
 
@@ -4558,6 +5306,8 @@ if ( $script:onpremisesdlConfiguration.GrantSendOnBehalfTo -ne $NULL )
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
 
+	$script:arrayCounter=0
+
 	foreach ($member in $script:onpremisesdlconfigurationGrantSendOnBehalfTOArray)
 	{
 		testOffice365Recipient ($member.PrimarySMTPAddressOrUPN) ($member.RecipientorUser)
@@ -4569,6 +5319,10 @@ if ( $script:onpremisesdlConfiguration.GrantSendOnBehalfTo -ne $NULL )
 				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
 			}
 		}
+
+		$script:onpremisesdlconfigurationGrantSendOnBehalfTOArray[$script:arrayCounter].GUID = $script:arrayGUID
+
+		$script:arrayCounter+=1
 	}
 }
 
@@ -4583,6 +5337,8 @@ if ( $script:onpremisesdlConfiguration.AcceptMessagesOnlyFromSendersOrMembers -n
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
 
+	$script:arrayCounter=0
+
 	foreach ($member in $script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers)
 	{
 		testOffice365Recipient ($member.PrimarySMTPAddressOrUPN) ($member.RecipientorUser)
@@ -4594,6 +5350,10 @@ if ( $script:onpremisesdlConfiguration.AcceptMessagesOnlyFromSendersOrMembers -n
 				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
 			}
 		}
+
+		$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers[$script:arrayCounter].GUID = $script:arrayGUID
+
+		$script:arrayCounter+=1
 	}
 }
 
@@ -4608,6 +5368,8 @@ if ( $script:onpremisesdlConfiguration.RejectMessagesFromSendersOrMembers -ne $N
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
 
+	$script:arrayCounter=0
+
 	foreach ($member in $script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers)
 	{
 		testOffice365Recipient ($member.PrimarySMTPAddressOrUPN) ($member.RecipientorUser)
@@ -4619,6 +5381,10 @@ if ( $script:onpremisesdlConfiguration.RejectMessagesFromSendersOrMembers -ne $N
 				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
 			}
 		}
+
+		$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers[$script:arrayCounter].GUID = $script:arrayGUID
+
+		$script:arrayCounter+=1
 	}
 }
 
@@ -4633,6 +5399,8 @@ if ( $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembers -ne 
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
 
+	$script:arrayCounter=0
+
 	foreach ($member in $script:onPremsiesDLBypassModerationFromSendersOrMembers)
 	{
 		testOffice365Recipient ($member.PrimarySMTPAddressOrUPN) ($member.RecipientorUser)
@@ -4644,8 +5412,14 @@ if ( $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembers -ne 
 				testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
 			}
 		}
+
+		$script:onPremsiesDLBypassModerationFromSendersOrMembers[$script:arrayCounter].GUID = $script:arrayGUID
+
+		$script:arrayCounter+=1
 	}
 }
+
+backupOnPremisesDLArrays
 
 moveGroupToOU  #Move the group to a non-sync OU to preserve it.
 
@@ -4702,11 +5476,15 @@ refreshOffice365PowerShellSession
 
 $error.clear()
 
+start-sleep -s 30
+
 createOffice365DistributionList
 
 #Set the settings of the distrbution list.
 #For multivalued attributes that are not NULL set the individual multivalued attribute.
 #For multivalued attributes trigger the appropriate add function with the operation name and the recipient to add.
+
+Start-Sleep -s 30
 
 setOffice365DistributionListSettings
 
@@ -4718,12 +5496,13 @@ if ( $script:onpremisesdlconfigurationMembershipArray -ne $NULL)
 	{
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing DL Membership member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
         if ($script:forCounter -gt 1000)
         {
             refreshOffice365PowerShellSession
             $script:forCounter=0
         }
-        setOffice365DistributionlistMultivaluedAttributes ( "DLMembership" ) ( $member.PrimarySMTPAddressOrUPN )
+        setOffice365DistributionlistMultivaluedAttributes ( "DLMembership" ) ( $member.GUID )
         $script:forCounter+=1
 	}
 }
@@ -4734,7 +5513,8 @@ if ( $script:onpremisesdlconfigurationManagedByArray -ne $NULL)
 	{
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing Bypass Managed By member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
-		setOffice365DistributionlistMultivaluedAttributes ( "ManagedBy" ) ( $member.PrimarySMTPAddressOrUPN )
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
+		setOffice365DistributionlistMultivaluedAttributes ( "ManagedBy" ) ( $member.GUID )
 	}
 }
 
@@ -4744,7 +5524,8 @@ if ( $script:onpremisesdlconfigurationModeratedByArray -ne $NULL)
 	{
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing Moderated By member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
-		setOffice365DistributionlistMultivaluedAttributes ( "ModeratedBy" ) ( $member.PrimarySMTPAddressOrUPN  )
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
+		setOffice365DistributionlistMultivaluedAttributes ( "ModeratedBy" ) ( $member.GUID  )
 	}
 }
 
@@ -4754,7 +5535,8 @@ if ( $script:onpremisesdlconfigurationGrantSendOnBehalfTOArray -ne $NULL )
 	{
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing Grant Send On Behalf To Array member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
-		setOffice365DistributionlistMultivaluedAttributes ( "GrantSendOnBehalfTo" ) ( $member.PrimarySMTPAddressOrUPN  )
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
+		setOffice365DistributionlistMultivaluedAttributes ( "GrantSendOnBehalfTo" ) ( $member.GUID  )
 	}
 }
 
@@ -4764,7 +5546,8 @@ if ( $script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers -ne
 	{
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing Accept Messages Only From Senders Or Members member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
-		setOffice365DistributionlistMultivaluedAttributes ( "AcceptMessagesOnlyFromSendersOrMembers" ) ( $member.PrimarySMTPAddressOrUPN  )
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
+		setOffice365DistributionlistMultivaluedAttributes ( "AcceptMessagesOnlyFromSendersOrMembers" ) ( $member.GUID  )
 	}
 }
 
@@ -4774,7 +5557,8 @@ if ( $script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers -ne $nu
 	{
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing Reject Messages From Senders Or Members member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
-		setOffice365DistributionlistMultivaluedAttributes ( "RejectMessagesFromSendersOrMembers" ) ( $member.PrimarySMTPAddressOrUPN  )
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
+		setOffice365DistributionlistMultivaluedAttributes ( "RejectMessagesFromSendersOrMembers" ) ( $member.GUID  )
 	}
 }
 
@@ -4784,7 +5568,8 @@ if ( $script:onPremsiesDLBypassModerationFromSendersOrMembers -ne $NULL )
 	{
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing Bypass Moderation From Senders Or Members member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
-		setOffice365DistributionlistMultivaluedAttributes ( "BypassModerationFromSendersOrMembers" ) ( $member.PrimarySMTPAddressOrUPN  )
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
+		setOffice365DistributionlistMultivaluedAttributes ( "BypassModerationFromSendersOrMembers" ) ( $member.GUID  )
 	}
 }
 
@@ -4805,26 +5590,33 @@ if ($script:newOffice365DLConfigurationMembership -ne $NULL)
 
 if ($convertToContact -eq $TRUE)
 {
+	#To determine if a group is set on the properties of another groups attributes - we need the group id.  The ID needs to be updated since the groups OU was moved.
+
+	recordMovedOriginalDistributionGroupProperties
+
 	#Record the membership of the distribution group in other groups.  This will be utilized to reset the mail contact.
 
 	recordDistributionGroupMembership
 
-	#To determine if a group is set on the properties of another groups attributes - we need the group id.  The ID needs to be updated since the groups OU was moved.
+	#Write the on premises member of information to XML in case of conversion failure.
 
-	recordMovedOriginalDistributionGroupProperties
+	backupOnPremisesMemberOf
 
 	#The distribution list can get set to serveral properties on other lists.
 	#The goal of this function is to locate those and record them.
 	#If the group migrating has permissions to itself - skip the recoridng as it's not required.
 
-
 	recordOriginalMultivaluedAttributes
+
+	#Write the multi valued attributes to XML in case of conversion failure.
+
+	backupOnPremisesMultiValuedAttributes
 	
 	#Remove the on prmeises distribution list that was converted.
 
 	removeOnPremisesDistributionGroup
 
-	#We wil utilize a dynamic distribution group to reprsent the original group in the GAL.
+	#We wil utilize a dynamic distribution group to represent the original group in the GAL.
 	#This ensures that under no circumstances can we have an address collission.
 
 	createOnPremisesDynamicDistributionGroup
@@ -4868,3 +5660,5 @@ if ($convertToContact -eq $TRUE)
 }
 
 cleanupSessions  #Clean up - were outta here.
+
+archiveFiles	#Achive the move files so we have them for future reference.
