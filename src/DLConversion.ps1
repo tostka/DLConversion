@@ -126,6 +126,13 @@ Change Date:	May 1st, 2019.
 Purpose/Change:	In this version we correct some of operations.  For example, we update the AD calls to utilize calls that work assuming a non-alias is utilized for the group.
 Additionally new functions have been created to log information regaridng the items created.
 
+Version:		1.6
+Author:			Timothy J. McMichael
+Purpose/Change:	In this version we are implementing a switch that allows administrators to bypass retaining on premsies settings for the group.
+When this switch is utilized as FALSE - if the migrated group was set on any other disrtibution list on premises with permissions or is the member of another distribution group
+these settings are lost.  This increases script execution time - but also results in potentially loosing effective permissions or group memberships on premises.
+Recommendations to only utilize this switch when a simple distribution group is being migrated.
+
   
 .EXAMPLE
 
@@ -147,7 +154,9 @@ Param (
 	[ValidateSet("Security","Distribution",$NULL)]
 	[string]$groupTypeOverride=$NULL,
 	[Parameter(Mandatory=$FALSE,Position=5)]
-	[boolean]$convertToContact=$TRUE
+	[boolean]$convertToContact=$TRUE,
+	[Parameter(Mandatory=$TRUE,Position=6)]
+	[boolean]$retainOnPremisesSettings=$TRUE
 )
 
 #---------------------------------------------------------[Initialisations]--------------------------------------------------------
@@ -160,7 +169,7 @@ Import-Module PSLogging
 #----------------------------------------------------------[Declarations]----------------------------------------------------------
 
 #Script Version
-$sScriptVersion = "1.2"
+$sScriptVersion = "1.6"
 
 #Log File Info
 <###ADMIN###>$script:sLogPath = "C:\Scripts\Working\"
@@ -5593,24 +5602,27 @@ if ($convertToContact -eq $TRUE)
 	#To determine if a group is set on the properties of another groups attributes - we need the group id.  The ID needs to be updated since the groups OU was moved.
 
 	recordMovedOriginalDistributionGroupProperties
+	
+	if ( $retainOnPremisesSettings -eq $TRUE )
+	{
+		#Record the membership of the distribution group in other groups.  This will be utilized to reset the mail contact.
 
-	#Record the membership of the distribution group in other groups.  This will be utilized to reset the mail contact.
+		recordDistributionGroupMembership
 
-	recordDistributionGroupMembership
+		#Write the on premises member of information to XML in case of conversion failure.
 
-	#Write the on premises member of information to XML in case of conversion failure.
+		backupOnPremisesMemberOf
 
-	backupOnPremisesMemberOf
+		#The distribution list can get set to serveral properties on other lists.
+		#The goal of this function is to locate those and record them.
+		#If the group migrating has permissions to itself - skip the recoridng as it's not required.
 
-	#The distribution list can get set to serveral properties on other lists.
-	#The goal of this function is to locate those and record them.
-	#If the group migrating has permissions to itself - skip the recoridng as it's not required.
+		recordOriginalMultivaluedAttributes
 
-	recordOriginalMultivaluedAttributes
+		#Write the multi valued attributes to XML in case of conversion failure.
 
-	#Write the multi valued attributes to XML in case of conversion failure.
-
-	backupOnPremisesMultiValuedAttributes
+		backupOnPremisesMultiValuedAttributes
+	}
 	
 	#Remove the on prmeises distribution list that was converted.
 
@@ -5631,12 +5643,15 @@ if ($convertToContact -eq $TRUE)
 
 	setRemoteRoutingContactSettings
 
-	resetDLMemberOf
+	if ( $retainOnPremisesSettings -eq $TRUE )
+	{
+		resetDLMemberOf
 
-	#It is possible that the distribution list has permissions to itself.  The find logic goes through and attempts to locate it - and will find it with permissions to itself.
-	#Since we're deleting it it cannot be reset.  Skip this function.
+		#It is possible that the distribution list has permissions to itself.  The find logic goes through and attempts to locate it - and will find it with permissions to itself.
+		#Since we're deleting it it cannot be reset.  Skip this function.
 
-	resetOriginalDistributionListSettings
+		resetOriginalDistributionListSettings
+	}
 	
 	#Replicate each domain controller in the domain.
 
