@@ -6455,6 +6455,7 @@ Function recordOriginalO365MultivaluedAttributes
 		
 		$functionGroupIdentity = $script:office365DLConfiguration.identity.tostring()	#Function variable to hold the identity of the group.
 		$functionGroupForwardingIdentity = ConvertFrom-DN -DistinguishedName $script:office365DLConfiguration.distinguishedName
+		$functionFixedGroupForwardingIdentity = $($functionGroupForwardingIdentity.replace("'","''"))
 		$functionCommand = $NULL	#Holds the expression that we will be executing to determine multi-valued membership.
 		$functionRecipientObject = $NULL
 		[array]$functionAllCloudOnlyGroups = $NULL
@@ -6551,7 +6552,6 @@ Function recordOriginalO365MultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all cloud mailboxes enabled for forwarding to the migrated DL for the identity...' -toscreen
 			
-			$functionFixedGroupForwardingIdentity = $($functionGroupForwardingIdentity.replace("'","''"))
 			$functionCommand = "get-o365Mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$functionFixedGroupForwardingIdentity' }"
 
 			$script:originalO365ForwardingAddress = invoke-expression $functionCommand
@@ -6574,7 +6574,7 @@ Function recordOriginalO365MultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all cloud only distribution groups that this user is a member of...' -toscreen
 			
-			$functionCommand = "get-o365Recipient -resultsize unlimited -Filter { Members -eq '$functionGroupForwardingIdentity' }"
+			$functionCommand = "get-o365Recipient -resultsize unlimited -Filter { Members -eq '$functionFixedGroupForwardingIdentity' }"
 
 			$script:originalO365MemberOf = invoke-expression $functionCommand
 
