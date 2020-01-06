@@ -6512,27 +6512,27 @@ Function recordOriginalO365MultivaluedAttributes
 
 			foreach ( $functionGroup in $functionAllCloudOnlyGroups )
 			{
-				if ( $functionGroup.grantSendOnBehalfTo -eq $functionGroupIdentity )
+				if ( $functionGroup.grantSendOnBehalfTo -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365GrantSendOnBehalfTo+=$functionGroup
 				}
-				if ( $functionGroup.AcceptMessagesOnlyFromDLMembers -eq $functionGroupIdentity )
+				if ( $functionGroup.AcceptMessagesOnlyFromDLMembers -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365AcceptMessagesOnlyFromDLMembers+=$functionGroup
 				}
-				if ( $functionGroup.ManagedBy -eq $functionGroupIdentity )
+				if ( $functionGroup.ManagedBy -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365ManagedBy+=$functionGroup
 				}
-				if ( $functionGroup.RejectMessagesFromDLMembers -eq $functionGroupIdentity )
+				if ( $functionGroup.RejectMessagesFromDLMembers -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365RejectMessagesFromDLMembers+=$functionGroup
 				}
-				if ( $functionGroup.bypassModerationFromSendersOrMembers -eq $functionGroupIdentity )
+				if ( $functionGroup.bypassModerationFromSendersOrMembers -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365BypassModerationFromSendersOrMembers+=$functionGroup
@@ -6598,7 +6598,7 @@ Function recordOriginalO365MultivaluedAttributes
 
 			foreach ( $functionGroup in $functionAllOffice365Groups )
 			{
-				if ( $functionGroup.grantSendOnBehalfTo -eq $functionGroupIdentity )
+				if ( $functionGroup.grantSendOnBehalfTo -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365GroupGrantSendOnBehalfTo+=$functionGroup
@@ -6620,7 +6620,7 @@ Function recordOriginalO365MultivaluedAttributes
 
 			foreach ( $functionGroup in $functionAllOffice365Groups )
 			{
-				if ( $functionGroup.AcceptMessagesOnlyFromDLMembers -eq $functionGroupIdentity )
+				if ( $functionGroup.AcceptMessagesOnlyFromDLMembers -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365GroupAcceptMessagesOnlyFromDLMembers+=$functionGroup
@@ -6642,7 +6642,7 @@ Function recordOriginalO365MultivaluedAttributes
 
 			foreach ( $functionGroup in $functionAllOffice365Groups )
 			{
-				if ( $functionGroup.RejectMessagesFromDLMembers -eq $functionGroupIdentity )
+				if ( $functionGroup.RejectMessagesFromDLMembers -eq $functionFixedGroupForwardingIdentity )
 				{
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365GroupRejectMessagesFromDLMembers+=$functionGroup
