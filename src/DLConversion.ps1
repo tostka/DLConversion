@@ -6551,7 +6551,8 @@ Function recordOriginalO365MultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all cloud mailboxes enabled for forwarding to the migrated DL for the identity...' -toscreen
 			
-			$functionCommand = "get-o365Mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$functionGroupForwardingIdentity' }"
+			$functionFixedGroupForwardingIdentity = $($functionGroupForwardingIdentity.replace("'","''"))
+			$functionCommand = "get-o365Mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$functionFixedGroupForwardingIdentity' }"
 
 			$script:originalO365ForwardingAddress = invoke-expression $functionCommand
 
