@@ -137,15 +137,7 @@ Version:		1.7
 Author:			Timothy J. McMichael
 Purpose/Change:	In this version we implement a swtich allowing for credentials to be supplied in an interactive fashion.  This prevents having to supply credentials within the XML file.
 
-Version:		1.8
-Author:			Timothy J. McMichael
-Purpose/Change: In version 1.8 we will attempt to track cloud only settings as they apply to the distribution group.  For example, it is possible that the on premsies distribution group was added
-with permissions, membership, restrictions, forwarding to cloud only objects or cloud only settings (like forwarding).  As with tracking on premises changes - the size of the tenant
-directly impacts the ability to do this work in a timely fashion.  A switch is utilized to override tracking these should the administrator not care.
-
-Version:		1.8.1
-
- 
+  
 .EXAMPLE
 
 DLConversion -dlToConvert dl@domain.com -ignoreInvalidDLMembers:$TRUE -ignoreInvalidManagedByMembers:$TRUE -groupTypeOverride "Security" -convertToContact:$TRUE -retainOnPremisesSettings:$TRUE -requireInteractiveCredentials:$TRUE
@@ -158,20 +150,18 @@ Param (
 
 	[Parameter(Mandatory=$True,Position=1)]
     [string]$dlToConvert,
-    [Parameter(Position=2)]
+    [Parameter(Mandatory=$True,Position=2)]
     [boolean]$ignoreInvalidDLMember=$FALSE,
-    [Parameter(Position=3)]
+    [Parameter(Mandatory=$True,Position=3)]
 	[boolean]$ignoreInvalidManagedByMember=$FALSE,
-	[Parameter(Position=4)]
+	[Parameter(Mandatory=$FALSE,Position=4)]
 	[ValidateSet("Security","Distribution",$NULL)]
 	[string]$groupTypeOverride=$NULL,
-	[Parameter(Position=5)]
+	[Parameter(Mandatory=$FALSE,Position=5)]
 	[boolean]$convertToContact=$TRUE,
-	[Parameter(Position=6)]
-	[boolean]$retainOnPremisesSettings=$True,
-	[Parameter(Position=7)]
-	[boolean]$retainO365CloudOnlySettings=$True,
-	[Parameter(Position=8)]
+	[Parameter(Mandatory=$TRUE,Position=6)]
+	[boolean]$retainOnPremisesSettings=$TRUE,
+	[Parameter(Mandatory=$TRUE,Position=7)]
 	[boolean]$requireInteractiveCredentials=$FALSE
 )
 
@@ -185,7 +175,7 @@ Import-Module PSLogging
 #----------------------------------------------------------[Declarations]----------------------------------------------------------
 
 #Script Version
-$sScriptVersion = "1.8"
+$sScriptVersion = "1.6"
 
 #Log File Info
 <###ADMIN###>$script:sLogPath = "C:\Scripts\Working\"
@@ -242,7 +232,8 @@ $script:x500Address=$NULL
 <###ADMIN###>$script:groupOrganizationalUnit = "OU=ConvertedDL,DC=DOMAIN,DC=LOCAL" #OU to move migrated DLs too.
 <###ADMIN###>$script:adDomainController = "dcname.domain.com" #List of domain controllers in domain.
 <###ADMIN###>[int32]$script:adDomainReplicationTime = 1 #Timeout to wait and allow for ad replication.
-<###ADMIN###>[int32]$script:dlDeletionTime = 1 #Timeout to wait before rechecking for deleted DL.
+<###ADMIN###>[int32]$script:dlDelectionTime = 1 #Timeout to wait before rechecking for deleted DL.
+<###ADMIN###>$script:adDomainController = "domaincontroller.company.local"
 
 #Establish script variables to backup distribution list information.
 
@@ -317,125 +308,9 @@ $script:onPremisesNewContactConfiguration = $NULL
 $script:arrayCounter=0	#Counter used to build arrays for the recipient arrays.
 $script:arrayGUID=$NULL	#Global used to store the recipient GUIDs to normalize objects.
 
-$script:newDynamicDLAddress = $NULL	#Primary SMTP address built for the dynamic distribution list.
-
-[array]$script:O365CloudOnlyDistributionGroups = $NULL	#Array holds all distribution groups that are cloud only distribution groups.
-[array]$script:originalO365GrantSendOnBehalfTo = $NULL	#Array of all groups that are cloud only that contain the migrated DL as grant send on behalf to.
-[array]$script:originalO365AcceptMessagesOnlyFromDLMembers = $NULL #Array of all groups that are cloud only that contain the mgirated DL as accept messages only from.
-[array]$script:originalO365ManagedBy = $NULL #Array of all groups that are cloud only that contain the migrated DL as managed By.
-[array]$script:originalO365RejectMessagesFromDLMembers = $NULL #Array of all groups that are cloud only that contain the migrated DL as reject messages from DL members.
-[array]$script:originalO365BypassModerationFromSendersOrMembers = $NULL #Array of all groups that are cloud only that contain the migrated DL as bypass moderation.
-[array]$script:originalO365ForwardingAddress = $NULL #Array of all objects where the migrated group is set for explicity forwarding address.
-[array]$script:originalO365MemberOf = $NULL #Array of all cloud only distribution groups where the migrated group is a member of the distribution group.
-
-<###ADMIN###>$script:originalO365GrantSendOnBehalfToXMLName="o365GrantSendOnBehalfTo.xml"
-<###ADMIN###>$script:originalO365AcceptMessagesFromXMLName="o365AcceptMessagesFrom.xml"
-<###ADMIN###>$script:originalO365ManagedByXMLName="o365ManagedBy.xml"
-<###ADMIN###>$script:originalO365RejectMessagesFromXMLName="o365RejectMessagesFrom.xml"
-<###ADMIN###>$script:originalO365BypassModerationFromSendersOrMembersXMLName="o365Bypass.xml"
-<###ADMIN###>$script:originalForwardingAddressXMLName="o365ForwardAddress.xml"
-<###ADMIN###>$script:originalO365MemberOfXMLName="o365MemberOf.xml"
-
-
-$script:originalO365GrantSendOnBehalfToXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365GrantSendOnBehalfToXMLName
-$script:originalO365AcceptMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365AcceptMessagesFromXMLName
-$script:originalO365ManagedByXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365ManagedByXMLName
-$script:originalO365RejectMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365RejectMessagesFromXMLName
-$script:originalO365BypassModerationFromSendersOrMembersXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365BypassModerationFromSendersOrMembersXMLName
-$script:originalO365ForwardingAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingAddressXMLName
-$script:originalO365MemberOfXML=Join-Path $script:backupXMLPath -ChildPath $script:originalO365MemberOfXMLName
-
-[array]$script:originalO365GroupGrantSendOnBehalfTo = $NULL	#Array of all office 365 groups that are cloud only that contain the migrated DL as grant send on behalf to.
-[array]$script:originalO365GroupAcceptMessagesOnlyFromDLMembers = $NULL #Array of all office 365 groups that are cloud only that contain the mgirated DL as accept messages only from.
-[array]$script:originalO365GroupRejectMessagesFromDLMembers = $NULL #Array of all office 365 groups that are cloud only that contain the migrated DL as reject messages from DL members.
-
-<###ADMIN###>$script:originalO365GroupGrantSendOnBehalfToXMLName="o365GroupGrantSendOnBehalfTo.xml"
-<###ADMIN###>$script:originalO365GroupAcceptMessagesFromXMLName="o365GroupAcceptMessagesFrom.xml"
-<###ADMIN###>$script:originalO365GroupRejectMessagesFromXMLName="o365GroupRejectMessagesFrom.xml"
-
-$script:originalO365GroupGrantSendOnBehalfToXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365GroupGrantSendOnBehalfToXMLName
-$script:originalO365GroupAcceptMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365GroupAcceptMessagesFromXMLName
-$script:originalO365GroupRejectMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365GroupRejectMessagesFromXMLName
-
-<###ADMIN###>[int]$script:refreshPowerShellSessionCounter=1000
-
+$script:newDynamicDLAddress	#Primary SMTP address built for the dynamic distribution list.
 
 #-----------------------------------------------------------[Functions]------------------------------------------------------------
-
-<#
-*******************************************************************************************************
-
-Function ConvertFrom-DN 
-
-.DESCRIPTION
-
-This function takes a distinguished name and converts it to a cononical name.
-
-All credits to the author (adapted by McMichael)
-
-https://gist.github.com/joegasper/3fafa5750261d96d5e6edf112414ae18
-
-.PARAMETER 
-
-Distinguished Name
-
-.INPUTS
-
-NONE
-
-.OUTPUTS 
-
-Canonical Name
-
-*******************************************************************************************************
-#>
-
-function ConvertFrom-DN 
-{
-    [cmdletbinding()]
-
-    param(
-
-    [Parameter(Mandatory,ValueFromPipeline=$True,ValueFromPipelineByPropertyName=$True)] 
-
-    [ValidateNotNullOrEmpty()]
-
-    [string[]]$DistinguishedName
-
-    )
-
-    process 
-    {
-        foreach ($DN in $DistinguishedName) 
-        {
-            foreach ( $item in ($DN.replace('\,','~').split(","))) 
-            {
-                switch ($item.TrimStart().Substring(0,2)) 
-                {
-                    'CN' {$CN = '/' + $item.Replace("CN=","")}
-
-                    'OU' {$OU += ,$item.Replace("OU=","");$OU += '/'}
-
-                    'DC' {$DC += $item.Replace("DC=","");$DC += '.'}
-
-                }
-            } 
-
-            $CanonicalName = $DC.Substring(0,$DC.length - 1)
-
-            for ($i = $OU.count;$i -ge 0;$i -- )
-            {
-                $CanonicalName += $OU[$i]
-            }
-
-            if ( $DN.Substring(0,2) -eq 'CN' ) 
-            {
-                $CanonicalName += $CN.Replace('~','\,')
-			}
-            Write-Output $CanonicalName
-        }
-    }
-}
 
 <#
 *******************************************************************************************************
@@ -580,93 +455,6 @@ Random - randomly cycle through a list of console colors
         }
     } #end
 } #end function
-
-<#
-*******************************************************************************************************
-
-Function recordCommandLineOptions
-
-.DESCRIPTION
-
-This function writes out all the specified and default paramters for the script.
-
-.PARAMETER <Parameter_Name>
-
-NONE
-
-.INPUTS
-
-NONE
-
-.OUTPUTS 
-
-NONE
-
-*******************************************************************************************************
-#>
-
-Function recordCommandLineOptions
-{
-	Param ()
-
-	Begin 
-	{
-	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function writes all command line options to the log. ....' -toscreen
-	}
-	Process 
-	{
-		Try 
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message "DL To Convert" -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $dlToConvert -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message "Ignore Invalid DL Member" -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $ignoreInvalidDLMember -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message "Ignore Invalid Managed By" -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $ignoreInvalidManagedByMember -toscreen
-			if ( $groupTypeOverride.Length -eq 0 )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message "Group Type Override NULL" -toscreen
-			}
-			else 
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message "Group Type Override" -toscreen
-				Write-LogInfo -LogPath $script:sLogFile -Message $groupTypeOverride -toscreen
-			}
-			Write-LogInfo -LogPath $script:sLogFile -Message "Covert To Contact" -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $convertToContact -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message "Retain On Premises Settings" -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $retainOnPremisesSettings -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message "Retain O365 Cloud Settings" -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $retainO365CloudOnlySettings -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message "Require Interactive Credentials" -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message $requireInteractiveCredentials -toscreen
-			
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-	}
-	End 
-	{
-		If ($?) 
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'The on premises credentials were successfully obtained.' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
-		}
-		else
-		{
-
-			Write-LogError -LogPath $script:sLogFile -Message "The on premises credential were not successfully obtained." -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-		}
-	}
-}
 
 <#
 *******************************************************************************************************
@@ -2505,209 +2293,6 @@ Function backupOnPremisesMultiValuedAttributes
 <#
 *******************************************************************************************************
 
-Function backupO365RetainedSettings
-
-.DESCRIPTION
-
-This function records all the values of the cloud only distribution groups that have dependencies on the group migrating.
-
-.PARAMETER <Parameter_Name>
-
-NONE
-
-.INPUTS
-
-NONE
-
-.OUTPUTS 
-
-NONE
-
-*******************************************************************************************************
-#>
-
-Function backupO365RetainedSettings
-{
-	Param ()
-
-	Begin 
-	{
-	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function exports all Office 365 non-dir sync objects that have dependencies on the migrated group...' -toscreen
-	}
-	Process 
-	{
-		Try 
-		{
-			if ( $script:originalO365GrantSendOnBehalfTo -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 grant send on behalf to to XML...' -toscreen
-				$script:originalO365GrantSendOnBehalfTo| Export-CLIXML -Path $script:originalO365GrantSendOnBehalfToXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ($script:originalO365AcceptMessagesOnlyFromDLMembers -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 accept messages from  to to XML...' -toscreen
-				$script:originalO365AcceptMessagesOnlyFromDLMembers | Export-CLIXML -Path $script:originalO365AcceptMessagesFromXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365ManagedBy -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 managed by to to XML...' -toscreen
-				$script:originalO365ManagedBy | Export-CLIXML -Path $script:originalO365ManagedByXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365RejectMessagesFromDLMembers -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 reject messages from to XML...' -toscreen
-				$script:originalO365RejectMessagesFromDLMembers | Export-CLIXML -Path $script:originalO365RejectMessagesFromXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365BypassModerationFromSendersOrMembers -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 bypass moderation to XML...' -toscreen
-				$script:originalO365BypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:originalO365BypassModerationFromSendersOrMembersXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365ForwardingAddress -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 forwarding address to XML...' -toscreen
-				$script:originalO365ForwardingAddress | Export-CLIXML -Path $script:originalO365ForwardingAddressXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365MemberOf -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing o365 Member of to a xml file...' -toscreen
-				$script:originalO365MemberOf | Export-CLIXML -Path $script:originalO365MemberOfXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365GroupGrantSendOnBehalfTo -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 Universal Groups Grant Send On Behalf To to XML...' -toscreen
-				$script:originalO365GroupGrantSendOnBehalfTo | Export-CLIXML -Path $script:originalO365GroupGrantSendOnBehalfToXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365GroupAcceptMessagesOnlyFromDLMembers -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 Universal Groups Grant Accept Messages From To to XML...' -toscreen
-				$script:originalO365GroupAcceptMessagesOnlyFromDLMembers | Export-CLIXML -Path $script:originalO365GroupAcceptMessagesFromXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			if ( $script:originalO365GroupRejectMessagesFromDLMembers -ne $NULL )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing Office 365 Universal Groups Reject Messages From To to XML...' -toscreen
-				$script:originalO365GroupRejectMessagesFromDLMembers | Export-CLIXML -Path $script:originalO365GroupRejectMessagesFromXML
-			}
-		}
-		Catch 
-		{
-            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-            cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-	}
-	End 
-	{
-		If ($?) 
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'The O365 multivalued attributes for the migrated group has been recorded to XML.' -toscreen
-            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
-		}
-		else
-		{
-
-			Write-LogError -LogPath $script:sLogFile -Message "The O365 multivalued attributes for the migrated group could not be recorded to XML." -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-		}
-	}
-}
-
-<#
-*******************************************************************************************************
-
 Function backupOnPremisesDLArrays
 
 .DESCRIPTION
@@ -4344,7 +3929,7 @@ Function recordMovedOriginalDistributionGroupProperties
 	{
 		Try 
 		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Recording moved DL configuration...' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Invoking AD call to domain controller to pull membership of the group on premises...' -toscreen
 
 			$script:onPremisesMovedDLConfiguration = get-distributionGroup -identity $dlToConvert -domaincontroller $script:adDomainController
 		
@@ -4562,39 +4147,6 @@ Function recordOriginalMultivaluedAttributes
 			foreach ( $member in $script:originalForwardingAddress )
 			{
 				Write-LogInfo -LogPath $script:sLogFile -Message $member.primarySMTPAddress -ToScreen
-			}
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Perform a server side search of all groups where this group was set to bypass moderation.
-			#Note:  There is no filerable attribute for this - this operation can be very expensive, memory intensive, and time consuming.
-			#Note:  Administrators may consider commenting out these portions and not attempting to perserve this for other DL migrations.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all bypass moderations for the identity...' -toscreen
-
-			$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $functionGroupIdentity } }
-
-			foreach ( $loopGroup in $functionGroupArray)
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message $loopGroup.primarySMTPAddress -ToScreen
-
-				#Create a custom object of each of the DLs found for later use.
-
-				$functionRecipientObject = New-Object PSObject -Property @{
-					DistinguishedName = $loopgroup.distinguishedName
-					Alias = $loopGroup.Alias
-					Name = $loopGroup.Name
-					PrimarySMTPAddressOrUPN = $loopGroup.primarySMTPAddress
-				}
-
-				$script:originalBypassModerationFromSendersOrMembers+=$functionRecipientObject		
 			}
 		}
 		Catch 
@@ -5367,99 +4919,6 @@ Function resetDLMemberOf
 <#
 *******************************************************************************************************
 
-Function resetCloudDLMemberOf
-
-.DESCRIPTION
-
-This function adds the new office 365 distribution groups back to the groups that it was in before deletion.
-
-.PARAMETER 
-
-NONE
-
-.INPUTS
-
-NONE
-
-.OUTPUTS 
-
-NONE
-
-*******************************************************************************************************
-#>
-
-Function resetCloudDLMemberOf
-{
-	Param ()
-
-	Begin 
-	{
-		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function resetCloudDLMemberOf...' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message 'This function adds the new office 365 distribution groups back to the groups that it was in before deletion..' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-
-		$functionGroupName = $script:newOffice365DLConfiguration.identity
-		[int]$functionCounter = 0
-	}
-	Process 
-	{
-		Try 
-		{
-			foreach ($functionGroup in $script:originalO365MemberOf)
-			{
-                $loopGroup=$functionGroup.identity
-				
-				Write-LogInfo -LogPath $script:sLogFile -Message "Adding '$functionGroupName' to group '$loopGroup'" -toscreen
-
-				add-o365distributionGroupMember -identity $loopGroup -member $functionGroupName
-
-				if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-				{
-					refreshOffice365PowerShellSession
-
-					$functionCounter=0
-				}
-				else
-				{
-					$functionCounter++	
-				}
-			}
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-	}
-	End 
-	{
-		If ($?) 
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Exiting function resetCloudDLMemberOf...' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Distribution group successfully updated.' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-		}
-		else
-		{
-			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function resetCloudDLMemberOf...' -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message "Distribution group could not be successfully update." -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile
-		}
-	}
-}
-
-<#
-*******************************************************************************************************
-
 Function resetOriginalDistributionListSettings
 
 .DESCRIPTION
@@ -5807,849 +5266,6 @@ Function resetOriginalDistributionListSettings
 	}
 }
 
-<#
-*******************************************************************************************************
-
-Function resetCloudDistributionListSettings
-
-.DESCRIPTION
-
-This function resets all cloud only DL multi-valued attributes where the migrated DL had settings.
-
-.PARAMETER OperationType
-
-String $arrayName - specifies the script variable array name to work with.
-
-NONE
-
-.INPUTS
-
-NONE
-
-.OUTPUTS 
-
-NONE
-
-*******************************************************************************************************
-#>
-Function resetCloudDistributionListSettings
-{
-	Begin 
-	{
-		[array]$functionArray = @()
-		$functionGroup=$NULL
-		[int]$functionCounter=0
-
-		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function resetCloudDistributionListSettings...' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message 'This function resets all cloud only DL multi-valued attributes where the migrated DL had settings....' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-	}
-	Process 
-	{
-		#Scan each array from the orignal DL settings and if not null take action.
-		
-        if ( $script:originalO365GrantSendOnBehalfTo -ne $NULL ) 
-        {
-			#The converted DL had send as rights to other groups - reset those groups to the migrated DL.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing send on behalf to...' -toscreen
-
-			$functionArray = $script:originalO365GrantSendOnBehalfTo
-
-            foreach ( $member in $functionArray )
-            {
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to send on behalf to '$member.primarySMTPAddress -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddress -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gathering groups current grant sent on behalf settings... ' -ToScreen
-					
-						$functionGroup=(get-o365Distributiongroup -identity $member.PrimarySMTPAddress).GrantSendOnBehalfTo
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the distribution group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding distribution group to send on behalf and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-						set-o365Distributiongroup -identity $member.PrimarySMTPAddress -GrantSendOnBehalfTo $functionGroup -BypassSecurityGroupManagerCheck
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-            }
-		}
-
-		$functionCounter=0
-
-        if ( $script:originalO365AcceptMessagesOnlyFromDLMembers -ne $NULL  )
-        {
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing accept messages on from senders or members...' -toscreen
-
-			#The group had accept only from set on other groups - add the group back.
-
-			$functionArray =  $script:originalO365AcceptMessagesOnlyFromDLMembers
-
-            foreach ( $member in $functionArray )
-            {
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to send on accept messsages only from senders or members ' -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddress -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gathering groups current accept messages from settings... ' -ToScreen
-
-						$functionGroup=(get-o365Distributiongroup -identity $member.PrimarySMTPAddress).AcceptMessagesOnlyFromSendersorMembers  
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the distribution group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding group to accept messages list and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-						$functionGroup
-						set-o365Distributiongroup -identity $member.PrimarySMTPAddress -AcceptMessagesOnlyFromSendersorMembers $functionGroup -BypassSecurityGroupManagerCheck
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-            }
-		}
-
-		$functionCounter=0
-
-		if ( $script:originalO365RejectMessagesFromDLMembers -ne $NULL )
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing reject messages on from senders or members...' -toscreen
-
-			#The converted group had reject set on other groups - add converted group.
-
-			$functionArray = $script:originalO365RejectMessagesFromDLMembers
-
-			foreach ( $member in $functionArray )
-            {
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to reject messages from senders or members ' -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddress -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gatheing groups current reject from settings... ' -ToScreen
-
-						$functionGroup=(get-o365Distributiongroup -identity $member.PrimarySMTPAddress).RejectMessagesFromSendersOrMembers
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding group to reject from list and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-					
-						set-o365Distributiongroup -identity $member.PrimarySMTPAddress -RejectMessagesFromSendersOrMembers $functionGroup -BypassSecurityGroupManagerCheck
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-			}
-		}
-		
-		$functionCounter=0
-
-		if ( $script:originalO365BypassModerationFromSendersOrMembers -ne $NULL )
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing bypass messages on from senders or members...' -toscreen
-
-			#Group had bypass moderation from senders or members set on other groups.  Add group to bypass moderation.
-
-			$functionArray = $script:originalO365BypassModerationFromSendersOrMembers
-
-			foreach ( $member in $functionArray )
-            {
-				#Get the distribution list that had the group originall on bypass full bypass list to a variable.
-
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to bypass moderation from senders or members ' -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.PrimarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddressorUPN -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gatheing groups current bypass moderation settings... ' -ToScreen
-
-						$functionGroup=(get-o365Distributiongroup -identity $member.PrimarySMTPAddress).BypassModerationFromSendersOrMembers  
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding mail contact to bypass list and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-
-						set-o365Distributiongroup -identity $member.PrimarySMTPAddress -BypassModerationFromSendersOrMembers $functionGroup -BypassSecurityGroupManagerCheck
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-			}
-		}
-
-		$functionCounter=0
-
-		if ( $script:originalO365ManagedBy -ne $NULL )
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing managed by...' -toscreen
-
-			#Group had bypass moderation from senders or members set on other groups.  Add group to bypass moderation.
-
-			$functionArray = $script:originalO365ManagedBy
-
-			foreach ( $member in $functionArray )
-            {
-				#Get the distribution list that had the group originall on bypass full bypass list to a variable.
-
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to managed by: ' -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.PrimarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddress -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gatheing groups current managed by settings... ' -ToScreen
-
-						$functionGroup=(get-o365Distributiongroup -identity $member.PrimarySMTPAddress).managedBy
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding mail contact to managed by and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-
-						set-o365Distributiongroup -identity $member.PrimarySMTPAddress -ManagedBy $functionGroup -BypassSecurityGroupManagerCheck
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-			}
-		}
-
-		$functionCounter=0
-
-		if ( $script:originalO365ForwardingAddress -ne $NULL )
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing forwading address...' -toscreen
-
-			#Group had forwarding address on other groups.  Add group to forwarding address.
-
-			$functionArray = $script:originalO365ForwardingAddress
-
-			foreach ( $member in $functionArray )
-            {
-				#Get the distribution list that had the group originall on bypass full bypass list to a variable.
-
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding forwarding Address... ' -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.PrimarySMTPAddress -ToScreen
-
-				Try
-				{
-					#Set the forwarding address of the mailbox.
-
-					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding forwarding address to the mailbox.... ' -ToScreen
-					Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-					
-					set-o365Mailbox -identity $member.PrimarySMTPAddress -forwardingAddress $script:newOffice365DLConfiguration.identity
-
-					if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-					{
-						refreshOffice365PowerShellSession
-					}
-					else
-					{
-						$functionCounter++	
-					}
-				}
-				Catch
-				{
-					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-					cleanupSessions
-					Stop-Log -LogPath $script:sLogFile -ToScreen
-					Break
-				}
-			}
-		}
-
-		$functionCounter=0
-
-		if ( $script:originalO365GroupAcceptMessagesOnlyFromDLMembers -ne $NULL  )
-        {
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing accept messages on from senders or members...' -toscreen
-
-			#The group had accept only from set on other groups - add the group back.
-
-			$functionArray =  $script:originalO365GroupAcceptMessagesOnlyFromDLMembers
-
-            foreach ( $member in $functionArray )
-            {
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to send on accept messsages only from senders or members ' -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddress -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gathering groups current accept messages from settings... ' -ToScreen
-
-						$functionGroup=(get-o365UnifiedGroup -identity $member.PrimarySMTPAddress).AcceptMessagesOnlyFromSendersorMembers  
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the distribution group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding group to accept messages list and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-						$functionGroup
-						set-o365Unifiedgroup -identity $member.PrimarySMTPAddress -AcceptMessagesOnlyFromSendersorMembers $functionGroup
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-            }
-		}
-
-		$functionCounter=0
-
-		if ( $script:originalO365GroupRejectMessagesFromDLMembers -ne $NULL )
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing reject messages on from senders or members...' -toscreen
-
-			#The converted group had reject set on other groups - add converted group.
-
-			$functionArray = $script:originalO365GroupRejectMessagesFromDLMembers
-
-			foreach ( $member in $functionArray )
-            {
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to reject messages from senders or members ' -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddress -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gatheing groups current reject from settings... ' -ToScreen
-
-						$functionGroup=(get-o365UnifiedGroup -identity $member.PrimarySMTPAddress).RejectMessagesFromSendersOrMembers
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding group to reject from list and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-					
-						set-o365Unifiedgroup -identity $member.PrimarySMTPAddress -RejectMessagesFromSendersOrMembers $functionGroup
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-			}
-		}
-
-		$functionCounter=0
-
-		if ( $script:originalO365GroupGrantSendOnBehalfTo -ne $NULL ) 
-        {
-			#The converted DL had send as rights to other groups - reset those groups to the migrated DL.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing send on behalf to...' -toscreen
-
-			$functionArray = $script:originalO365GroupGrantSendOnBehalfTo
-
-            foreach ( $member in $functionArray )
-            {
-				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding to send on behalf to '$member.primarySMTPAddress -toscreen
-				Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-				if ( $member.primarySMTPAddress -ne $script:onpremisesdlConfiguration.primarySMTPAddress )
-				{
-					Try
-					{
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Gathering groups current grant sent on behalf settings... ' -ToScreen
-					
-						$functionGroup=(get-o365UnifiedGroup -identity $member.PrimarySMTPAddress).GrantSendOnBehalfTo
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-					Try
-					{
-						#Add the distribution group identity to the list and then restamp the entire list.
-						#This was done because array operations @{ADD=*} did not work against this attribute.
-
-						Write-LogInfo -LogPath $script:sLogFile -Message 'Adding distribution group to send on behalf and stamping full list on group... ' -ToScreen
-						Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
-
-						$functionGroup+=$script:newOffice365DLConfiguration.primarySMTPAddress
-						set-o365Unifiedgroup -identity $member.PrimarySMTPAddress -GrantSendOnBehalfTo $functionGroup
-
-						if ( $functionCounter -gt $script:refreshPowerShellSessionCounter )
-						{
-							refreshOffice365PowerShellSession
-						}
-						else
-						{
-							$functionCounter++	
-						}
-					}
-					Catch
-					{
-						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-						cleanupSessions
-						Stop-Log -LogPath $script:sLogFile -ToScreen
-						Break
-					}
-				}
-            }
-		}
-	}
-	End 
-	{
-		If ($?) 
-		{
-			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Exiting function resetCloudDistributionListSettings...' -toscreen
-            Write-LogInfo -LogPath $script:sLogFile -Message 'The array was built successfully.' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-		}
-		else
-		{
-			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function resetCloudDistributionListSettings...' -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message "The array could not be built successfully - exiting." -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-		}
-	}
-}
-
-<#
-*******************************************************************************************************
-
-Function recordOriginalO365MultivaluedAttributes
-
-.DESCRIPTION
-
-Records information regarding the multi-valued attributes of Office 365 cloud only distribution lists for preservation.
-
-.PARAMETER 
-
-NONE
-
-.INPUTS
-
-NONE
-
-.OUTPUTS 
-
-NONE
-
-*******************************************************************************************************
-#>
-
-Function recordOriginalO365MultivaluedAttributes
-{
-	Param ()
-
-	Begin 
-	{
-		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function recordOriginalO365MultivaluedAttributes...' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message 'Records information regarding the multi-valued attributes of Office 365 cloud only distribution lists for preservation.' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-
-		#Record the identity of the moved distribution list (updated post move so we have correct identity)
-		
-		$functionGroupIdentity = $script:office365DLConfiguration.identity.tostring()	#Function variable to hold the identity of the group.
-		$functionGroupForwardingIdentity = ConvertFrom-DN -DistinguishedName $script:office365DLConfiguration.distinguishedName
-		$functionCommand = $NULL	#Holds the expression that we will be executing to determine multi-valued membership.
-		$functionRecipientObject = $NULL
-		[array]$functionAllCloudOnlyGroups = $NULL
-		[array]$functionAllOffice365Groups = $NULL
-		
-		Write-LogInfo -LogPath $script:sLogFile -Message 'The following group identity is the filtered name.' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message $functionGroupIdentity -toscreen
-	}
-	Process 
-	{
-		Try 
-		{
-			#Getting all distribution groups where they are cloud only.
-
-			#Filters in office 365 are not necessarily reliable based on testing.
-			#What we will do here is gather all cloud only group objects into a variable for the purposes of working through it.
-			#This should limit the query to the service against this call - and from there we will filter out all the things we want.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gathering all cloud only distribution lists...' -toscreen
-
-			$functionCommand = "get-o365DistributionGroup -resultsize unlimited -filter { IsDirSynced -eq `$FALSE}"
-
-			$functionAllCloudOnlyGroups = Invoke-Expression $functionCommand
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Filters in office 365 are not necessarily reliable based on testing.
-			#What we will do here is gather all cloud only group objects into a variable for the purposes of working through it.
-			#This should limit the query to the service against this call - and from there we will filter out all the things we want.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gathering all Office 365 Groups...' -toscreen
-
-			$functionAllOffice365Groups = get-O365UnifiedGroup -resultsize unlimited
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Iterate through all groups locating those that have grant send on behalf to set to the identity.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all grantSendOnBehalfTo for the identity...' -toscreen
-
-			foreach ( $functionGroup in $functionAllCloudOnlyGroups )
-			{
-				if ( $functionGroup.grantSendOnBehalfTo -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365GrantSendOnBehalfTo+=$functionGroup
-				}
-				if ( $functionGroup.AcceptMessagesOnlyFromDLMembers -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365AcceptMessagesOnlyFromDLMembers+=$functionGroup
-				}
-				if ( $functionGroup.ManagedBy -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365ManagedBy+=$functionGroup
-				}
-				if ( $functionGroup.RejectMessagesFromDLMembers -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365RejectMessagesFromDLMembers+=$functionGroup
-				}
-				if ( $functionGroup.bypassModerationFromSendersOrMembers -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365BypassModerationFromSendersOrMembers+=$functionGroup
-				}
-			}	
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Interate through all mailboxes and determine any that have a forwarding address of the DL to be migrated.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all cloud mailboxes enabled for forwarding to the migrated DL for the identity...' -toscreen
-			
-			$functionCommand = "get-o365Mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$functionGroupForwardingIdentity' }"
-
-			$script:originalO365ForwardingAddress = invoke-expression $functionCommand
-
-			foreach ( $member in $script:originalO365ForwardingAddress )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message $member.primarySMTPAddress -ToScreen
-			}
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Iterate through all groups and see if we can find any cloud only groups that this user is a member of.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all cloud only distribution groups that this user is a member of...' -toscreen
-			
-			$functionCommand = "get-o365Recipient -resultsize unlimited -Filter { Members -eq '$functionGroupForwardingIdentity' }"
-
-			$script:originalO365MemberOf = invoke-expression $functionCommand
-
-			foreach ( $member in $script:originalO365MemberOf )
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message $member.primarySMTPAddress -ToScreen
-			}
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Iterate through all grant send on behalf to in Office 365 groups.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all grantSendOnBehalfTo for the identity...' -toscreen
-
-			foreach ( $functionGroup in $functionAllOffice365Groups )
-			{
-				if ( $functionGroup.grantSendOnBehalfTo -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365GroupGrantSendOnBehalfTo+=$functionGroup
-				}
-			}	
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Iterate through all office 365 groups locating those that have grant send on behalf to set to the identity.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all acceptMessageOnlyFromDLMembers for the identity...' -toscreen
-
-			foreach ( $functionGroup in $functionAllOffice365Groups )
-			{
-				if ( $functionGroup.AcceptMessagesOnlyFromDLMembers -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365GroupAcceptMessagesOnlyFromDLMembers+=$functionGroup
-				}
-			}	
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-		Try 
-		{
-			#Iterate through all office 365 groups locating those that have grant send on behalf to set to the identity.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all rejectMessagesFromDLMembers for the identity...' -toscreen
-
-			foreach ( $functionGroup in $functionAllOffice365Groups )
-			{
-				if ( $functionGroup.RejectMessagesFromDLMembers -eq $functionGroupIdentity )
-				{
-					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
-					$script:originalO365GroupRejectMessagesFromDLMembers+=$functionGroup
-				}
-			}	
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			Break
-		}
-	}
-}
-
 
 #-----------------------------------------------------------[Execution]------------------------------------------------------------
 
@@ -6658,8 +5274,6 @@ Function recordOriginalO365MultivaluedAttributes
 New-Item -ItemType Directory -Path $script:sLogPath -Force
 
 Start-Log -LogPath $script:sLogPath -LogName $script:sLogName -ScriptVersion $script:sScriptVersion -ToScreen
-
-recordCommandLineOptions #Records the command line options specified in the command call.
 
 establishOnPremisesCredentials  #Function call to import and populate on premises credentials.
 
@@ -6713,7 +5327,7 @@ if ( $script:onpremisesdlconfigurationMembership -ne $NULL )
 {
     buildMembershipArray ( "DLMembership" ) ( "onpremisesdlconfigurationMembershipArray") ($ignoreInvalidDLMember) #This function builds an array of members for the DL <or> multivalued attributes.
     
-	if ( $script:onpremisesdlconfigurationMembership.count -gt $script:refreshPowerShellSessionCounter )
+	if ( $script:onpremisesdlconfigurationMembership.count -gt 1000 )
 	{
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
@@ -6756,7 +5370,7 @@ if ( $script:onpremisesdlConfiguration.ManagedBy -ne $NULL )
 {
     buildMembershipArray ( "ManagedBy" ) ( "onpremisesdlconfigurationManagedByArray" ) ( $ignoreInvalidManagedByMember )
     
-    if ( $script:onpremisesdlConfiguration.ManagedBy.count -gt $script:refreshPowerShellSessionCounter )
+    if ( $script:onpremisesdlConfiguration.ManagedBy.count -gt 1000 )
 	{
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
@@ -6784,7 +5398,7 @@ if ( $script:onpremisesdlConfiguration.ModeratedBy -ne $NULL )
 {
     buildmembershipArray ( "ModeratedBy" ) ( "onpremisesdlconfigurationModeratedByArray" ) 
     
-    if ( $script:onpremisesdlConfiguration.ModeratedBy.count -gt $script:refreshPowerShellSessionCounter )
+    if ( $script:onpremisesdlConfiguration.ModeratedBy.count -gt 1000 )
 	{
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.O
 	}
@@ -6812,7 +5426,7 @@ if ( $script:onpremisesdlConfiguration.GrantSendOnBehalfTo -ne $NULL )
 {
     buildmembershipArray ( "GrantSendOnBehalfTo" ) ( "onpremisesdlconfigurationGrantSendOnBehalfTOArray" )
     
-    if ( $script:onpremisesdlConfiguration.GrantSendOnBehalfTo.count -gt $script:refreshPowerShellSessionCounter )
+    if ( $script:onpremisesdlConfiguration.GrantSendOnBehalfTo.count -gt 1000 )
 	{
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
@@ -6843,7 +5457,7 @@ if ( $script:onpremisesdlConfiguration.AcceptMessagesOnlyFromSendersOrMembers -n
 {
     buildMembershipArray ( "AcceptMessagesOnlyFromSendersOrMembers" ) ( "onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers" )
     
-    if ( $script:onpremisesdlConfiguration.AcceptMessagesOnlyFromSendersOrMembers.count -gt $script:refreshPowerShellSessionCounter )
+    if ( $script:onpremisesdlConfiguration.AcceptMessagesOnlyFromSendersOrMembers.count -gt 1000 )
 	{
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
@@ -6874,7 +5488,7 @@ if ( $script:onpremisesdlConfiguration.RejectMessagesFromSendersOrMembers -ne $N
 {
     buildMembershipArray ( "RejectMessagesFromSendersOrMembers" ) ( "onpremisesdlconfigurationRejectMessagesFromSendersOrMembers" )
     
-    if ( $script:onpremisesdlConfiguration.RejectMessagesFromSendersOrMembers.count -gt $script:refreshPowerShellSessionCounter )
+    if ( $script:onpremisesdlConfiguration.RejectMessagesFromSendersOrMembers.count -gt 1000 )
 	{
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
@@ -6905,7 +5519,7 @@ if ( $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembers -ne 
 {
     buildMembershipArray ( "BypassModerationFromSendersOrMembers") ( "onPremsiesDLBypassModerationFromSendersOrMembers" )
     
-    if ( $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembership.count -gt $script:refreshPowerShellSessionCounter )
+    if ( $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembership.count -gt 1000 )
 	{
 		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
 	}
@@ -6932,21 +5546,6 @@ if ( $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembers -ne 
 
 backupOnPremisesDLArrays
 
-#If the administrator has choosen to preserve the cloud only distribution  group settings - we need to determine everything now. 
-#This requires the convert to contact option to be selected.
-
-if ( $convertToContact -eq $TRUE )
-{
-	if ( $retainO365CloudOnlySettings -eq $TRUE )
-	{
-		#We need to gather all the settings that are on the existing dir synced distribution group that may be set on cloud only distribution groups.
-
-		recordOriginalO365MultivaluedAttributes
-
-		backupO365RetainedSettings
-	}	
-}
-
 moveGroupToOU  #Move the group to a non-sync OU to preserve it.
 
 #Replicate each domain controller in the domain.
@@ -6955,7 +5554,7 @@ replicateDomainControllers
 
 #Start countdown for the period of time specified by the variable for post domain controller replication.
 
-Start-PSCountdown -Minutes $script:adDomainReplicationTime -Title "Waiting for domain controller replication" -Message "Waiting for domain controller replication"
+Start-PSCountdown -Minutes 1 -Title "Waiting for domain controller replication" -Message "Waiting for domain controller replication"
 
 Write-LogInfo -LogPath $script:sLogFile -Message "Invoking AADConnect Delta Sync Remotely" -ToScreen
 
@@ -6983,14 +5582,14 @@ $error.clear()
 #If the DL is found the retry variable will tirgger us to loop back around and try again.
 #When the error condition is encountered the DL is no longer there - good - we can move on.
 
-Write-LogInfo -LogPath $script:sLogFile -Message "Waiting for original DL deletion from Office 365" -ToScreen
+Write-LogInfo -LogPath $script:sLogFile -Message "Wating for original DL deletion from Office 365" -ToScreen
 
 do
 {
 	if ( $script:dlDeletionRetryRequired -eq $TRUE)
 	{
-		Write-LogInfo -LogPath $script:sLogFile -Message "Waiting for original DL deletion from Office 365" -ToScreen
-		Start-PSCountdown -Minutes $script:dlDeletionTime -Title "Waiting for DL deletion to process in Office 365" -Message "Waiting for DL deletion to process in Office 365"
+		Write-LogInfo -LogPath $script:sLogFile -Message "Wating for original DL deletion from Office 365" -ToScreen
+		Start-PSCountdown -Minutes $script:dlDelectionTime -Title "Waiting for DL deletion to process in Office 365" -Message "Waiting for DL deletion to process in Office 365"
 		$error.clear()
 	}
 	$script:dlDeletionRetryRequired = $TRUE
@@ -7023,7 +5622,7 @@ if ( $script:onpremisesdlconfigurationMembershipArray -ne $NULL)
 		Write-Loginfo -LogPath $script:sLogFile -Message "Processing DL Membership member to Office 365..." -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
-        if ($script:forCounter -gt $script:refreshPowerShellSessionCounter)
+        if ($script:forCounter -gt 1000)
         {
             refreshOffice365PowerShellSession
             $script:forCounter=0
@@ -7119,9 +5718,6 @@ if ($convertToContact -eq $TRUE)
 	#To determine if a group is set on the properties of another groups attributes - we need the group id.  The ID needs to be updated since the groups OU was moved.
 
 	recordMovedOriginalDistributionGroupProperties
-
-	#The administrator has decided the way to preserve as many on premises properties as available.
-	#This may add significant time to script execution.
 	
 	if ( $retainOnPremisesSettings -eq $TRUE )
 	{
@@ -7166,18 +5762,11 @@ if ($convertToContact -eq $TRUE)
 	if ( $retainOnPremisesSettings -eq $TRUE )
 	{
 		resetDLMemberOf
-	
+
 		#It is possible that the distribution list has permissions to itself.  The find logic goes through and attempts to locate it - and will find it with permissions to itself.
 		#Since we're deleting it it cannot be reset.  Skip this function.
-	
+
 		resetOriginalDistributionListSettings
-	}
-
-	if ( $retainO365CloudOnlySettings -eq $True )
-	{
-		resetCloudDLMemberOf
-
-		resetCloudDistributionListSettings
 	}
 	
 	#Replicate each domain controller in the domain.
@@ -7186,7 +5775,7 @@ if ($convertToContact -eq $TRUE)
 
 	#Start countdown for the period of time specified by the variable for post domain controller replication.
 
-	Start-PSCountdown -Minutes $script:adDomainReplicationTime -Title "Waiting for domain controller replication" -Message "Waiting for domain controller replication"
+	Start-PSCountdown -Minutes 1 -Title "Waiting for domain controller replication" -Message "Waiting for domain controller replication"
 
 	do
 	{
