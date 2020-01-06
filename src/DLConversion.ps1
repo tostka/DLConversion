@@ -147,6 +147,10 @@ Version:		1.8.1
 Author:			Timothy J. McMichael
 Purpose/Chnage: Correcting get-distributionGroupMember for multiple domains.  In the current confige using -domainController only returns members from the domain of the controller specified.
 We need to ignore the scope and allow it to search all domains that Exchange is aware of.
+
+Version:		1.8.2
+Author:			Timothy J. McMichael
+Purpose/Change: Correcting for distribution lists that contain apostrophies.
  
 .EXAMPLE
 
@@ -3456,7 +3460,8 @@ Function testOffice365Recipient
 			
 			if ( $UserorRecipient -eq "Recipient")
 			{
-				$functionCommand = "get-o365recipient -filter {primarySMTPAddress -eq '$primarySMTPAddressOrUPN'}"
+				$fixedPrimarySMTPAddressOrUPN = "$($primarySMTPAddressorUPN.replace("'","''"))"
+				$functionCommand = "get-o365recipient -filter {primarySMTPAddress -eq '$fixedPrimarySMTPAddressOrUPN'}"
 
 				$functionTest = Invoke-Expression $functionCommand
 
@@ -3471,7 +3476,8 @@ Function testOffice365Recipient
 			}
 			elseif ($UserorRecipient -eq "User")
 			{
-				$functionCommand = "get-o365User -filter {userPrincipalName -eq '$primarySMTPAddressOrUPN'}"
+				$fixedPrimarySMTPAddressorUPN = "$($primarySMTPAddressOrUPN.Replace("'","''"))"
+				$functionCommand = "get-o365User -filter {userPrincipalName -eq '$fixedPrimarySMTPAddressorUPN'}"
 
 				$functionTest=invoke-expression $functionCommand
 
