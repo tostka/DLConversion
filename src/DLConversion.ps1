@@ -3216,7 +3216,7 @@ Function buildMembershipArray
 					Write-LogInfo -LogPath $script:sLogFile -Message "Processing mail enabled DL member:" -ToScreen
 					Write-LogInfo -LogPath $script:sLogFile -Message $member.name -ToScreen
 
-                    $functionRecipient = get-recipient -identity $member.PrimarySMTPAddress -domaincontroller $script:adDomainController
+                    $functionRecipient = get-recipient -identity $member.PrimarySMTPAddress
 
 					if ( $functionRecipient.CustomAttribute1 -eq "MigratedByScript")
 					{
@@ -3300,7 +3300,7 @@ Function buildMembershipArray
 					Write-LogInfo -LogPath $script:sLogFile -Message "Processing Managed By member:" -ToScreen
 					Write-LogInfo -LogPath $script:sLogFile -Message $member -ToScreen
 
-					$functionRecipient = get-recipient -identity $member -domaincontroller $script:adDomainController
+					$functionRecipient = get-recipient -identity $member
 
 					if ( $functionRecipient.CustomAttribute1 -eq "MigratedByScript")
 					{
@@ -3367,7 +3367,7 @@ Function buildMembershipArray
 					Write-LogInfo -LogPath $script:sLogFile -Message "Processing ModeratedBy, GrantSendOnBehalfTo, AcceptMessagesOnlyFromSendersorMembers, RejectMessagesFromSendersOrMembers, or BypassModerationFromSendersOrMembers member:" -ToScreen
 					Write-LogInfo -LogPath $script:sLogFile -Message $member -ToScreen
 
-					$functionRecipient = get-recipient -identity $member -domaincontroller $script:adDomainController
+					$functionRecipient = get-recipient -identity $member
 
 					if ( $functionRecipient.CustomAttribute1 -eq "MigratedByScript")
 					{
