@@ -4536,6 +4536,7 @@ Function recordOriginalMultivaluedAttributes
 		#Record the identity of the moved distribution list (updated post move so we have correct identity)
 		
 		$functionGroupIdentity = $script:onPremisesMovedDLConfiguration.identity.tostring()	#Function variable to hold the identity of the group.
+		$fixedFunctionGroupIdentity = "$($functionGroupIdentity.Replace("'","''"))"
 		$functionCommand = $NULL	#Holds the expression that we will be executing to determine multi-valued membership.
 		[array]$functionGroupArray = @()
 		$functionRecipientObject = $NULL
@@ -4551,7 +4552,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all grantSendOnBehalfTo for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { GrantSendOnBehalfTo -eq '$functionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { GrantSendOnBehalfTo -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
             
             $script:originalGrantSendOnBehalfTo = Invoke-Expression $functionCommand
 		
@@ -4574,7 +4575,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all AcceptMessagesOnlyFromDLMembers for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { AcceptMessagesOnlyFromDLMembers -eq '$functionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { AcceptMessagesOnlyFromDLMembers -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
             
             $script:originalAcceptMessagesFrom = Invoke-Expression $functionCommand
 		
@@ -4597,7 +4598,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all ManagedBy for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { ManagedBy -eq '$functionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { ManagedBy -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
             
             $script:originalManagedBy = Invoke-Expression $functionCommand
 		
@@ -4620,7 +4621,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all RejectMessagesFromDLMembers for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { RejectMessagesFromDLMembers -eq '$functionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { RejectMessagesFromDLMembers -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
             
             $script:originalRejectMessagesFrom = Invoke-Expression $functionCommand
 		
@@ -4645,7 +4646,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all bypass moderations for the identity...' -toscreen
 
-			$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $functionGroupIdentity } }
+			$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $fixedFunctionGroupIdentity } }
 
 			foreach ( $loopGroup in $functionGroupArray)
 			{
@@ -4677,7 +4678,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all forwarding addresses for the identity...' -toscreen
 
-            $functionCommand = "get-mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$functionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
             
             $script:originalForwardingAddress = Invoke-Expression $functionCommand
 		
@@ -4702,7 +4703,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all bypass moderations for the identity...' -toscreen
 
-			$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $functionGroupIdentity } }
+			$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $fixedFunctionGroupIdentity } }
 
 			foreach ( $loopGroup in $functionGroupArray)
 			{
