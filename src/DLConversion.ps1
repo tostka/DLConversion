@@ -720,6 +720,7 @@ Function replicateDomainControllersInbound
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -790,6 +791,7 @@ Function replicateDomainControllersOutbound
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -859,6 +861,7 @@ Function createOnPremisesADDomainControllerPowershellSession
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -880,6 +883,7 @@ Function createOnPremisesADDomainControllerPowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -926,6 +930,7 @@ Function cleanupSessions
 		{
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -941,6 +946,7 @@ Function cleanupSessions
 			Write-LogError -LogPath $script:sLogFile -Message "The powershell sessions could not be cleared - manual removal before restarting required" -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1002,6 +1008,7 @@ Function removeOffice365PowerShellSession
 			Write-LogError -LogPath $script:sLogFile -Message "The powershell sessions could not be cleared - manual removal before restarting required" -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1048,6 +1055,7 @@ Function removeOnPremisesPowershellSession
 		{
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1063,6 +1071,7 @@ Function removeOnPremisesPowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message "The powershell sessions could not be cleared - manual removal before restarting required" -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1117,6 +1126,7 @@ Function refreshOffice365PowerShellSession
 			Write-LogError -LogPath $script:sLogFile -Message "All Office 365 powershell sessions have not been refreshed." -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1171,6 +1181,7 @@ Function refreshOnPremisesPowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message "All Office 365 powershell sessions have not been refreshed." -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1229,6 +1240,7 @@ Function establishOnPremisesCredentials
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1246,6 +1258,7 @@ Function establishOnPremisesCredentials
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1301,6 +1314,7 @@ Function establishOffice365Credentials
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1318,6 +1332,7 @@ Function establishOffice365Credentials
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1384,6 +1399,7 @@ Function validateInteractiveCredentials
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1401,6 +1417,7 @@ Function validateInteractiveCredentials
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1449,6 +1466,7 @@ Function createOnPremisesPowershellSession
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1466,6 +1484,7 @@ Function createOnPremisesPowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1513,6 +1532,7 @@ Function createOffice365PowershellSession
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1530,6 +1550,7 @@ Function createOffice365PowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1577,6 +1598,7 @@ Function createOnPremisesAADConnectPowershellSession
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1594,6 +1616,7 @@ Function createOnPremisesAADConnectPowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1641,6 +1664,7 @@ Function importOnPremisesPowershellSession
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1658,6 +1682,7 @@ Function importOnPremisesPowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1705,6 +1730,7 @@ Function importOffice365PowershellSession
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1722,6 +1748,7 @@ Function importOffice365PowershellSession
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1769,6 +1796,7 @@ Function collectOnPremsiesDLConfiguration
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1786,6 +1814,7 @@ Function collectOnPremsiesDLConfiguration
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1833,6 +1862,7 @@ Function collectNewOffice365DLInformation
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1850,6 +1880,7 @@ Function collectNewOffice365DLInformation
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1897,6 +1928,7 @@ Function collectNewOffice365DLMemberInformation
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1914,6 +1946,7 @@ Function collectNewOffice365DLMemberInformation
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1961,6 +1994,7 @@ Function collectOffice365DLConfiguation
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -1978,6 +2012,7 @@ Function collectOffice365DLConfiguation
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2038,6 +2073,7 @@ Function performOffice365SafetyCheck
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2085,6 +2121,7 @@ Function backupOnPremisesDLConfiguration
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2102,6 +2139,7 @@ Function backupOnPremisesDLConfiguration
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2149,6 +2187,7 @@ Function backupNewOffice365DLConfiguration
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2166,6 +2205,7 @@ Function backupNewOffice365DLConfiguration
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2213,6 +2253,7 @@ Function backupNewOffice365DLConfigurationMembership
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2230,6 +2271,7 @@ Function backupNewOffice365DLConfigurationMembership
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2277,6 +2319,7 @@ Function backupOffice365DLConfiguration
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2294,6 +2337,7 @@ Function backupOffice365DLConfiguration
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2344,6 +2388,7 @@ Function backupOnPremisesMemberOf
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2361,6 +2406,7 @@ Function backupOnPremisesMemberOf
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2412,6 +2458,7 @@ Function backupOnPremisesMultiValuedAttributes
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2427,6 +2474,7 @@ Function backupOnPremisesMultiValuedAttributes
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2442,6 +2490,7 @@ Function backupOnPremisesMultiValuedAttributes
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2457,6 +2506,7 @@ Function backupOnPremisesMultiValuedAttributes
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2472,6 +2522,7 @@ Function backupOnPremisesMultiValuedAttributes
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2487,6 +2538,7 @@ Function backupOnPremisesMultiValuedAttributes
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2504,6 +2556,7 @@ Function backupOnPremisesMultiValuedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2555,6 +2608,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2570,6 +2624,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2585,6 +2640,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2600,6 +2656,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2615,6 +2672,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2630,6 +2688,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2645,6 +2704,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2660,6 +2720,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2675,6 +2736,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2690,6 +2752,7 @@ Function backupO365RetainedSettings
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2707,6 +2770,7 @@ Function backupO365RetainedSettings
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2757,6 +2821,7 @@ Function backupOnPremisesDLArrays
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2771,6 +2836,7 @@ Function backupOnPremisesDLArrays
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2785,6 +2851,7 @@ Function backupOnPremisesDLArrays
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2799,6 +2866,7 @@ Function backupOnPremisesDLArrays
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2813,6 +2881,7 @@ Function backupOnPremisesDLArrays
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2827,6 +2896,7 @@ Function backupOnPremisesDLArrays
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -2841,6 +2911,7 @@ Function backupOnPremisesDLArrays
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2858,6 +2929,7 @@ Function backupOnPremisesDLArrays
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -2962,6 +3034,7 @@ Function backupOnPremisesdlMembership
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -2979,6 +3052,7 @@ Function backupOnPremisesdlMembership
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -3026,6 +3100,7 @@ Function collectOnPremisesDLConfigurationMembership
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -3043,6 +3118,7 @@ Function collectOnPremisesDLConfigurationMembership
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -3196,7 +3272,8 @@ Function buildMembershipArray
                     Write-LogError -LogPath $script:sLogFile -Message "The object must be removed or mail enabled." -ToScreen   
                     Write-LogError -LogPath $script:sLogFile -Message "EXITING." -ToScreen 
                     cleanupSessions
-                    Stop-Log -LogPath $script:sLogFile -ToScreen  
+					Stop-Log -LogPath $script:sLogFile -ToScreen
+					archiveFiles  
                 }
                 else 
                 {
@@ -3262,7 +3339,8 @@ Function buildMembershipArray
                     Write-LogError -LogPath $script:sLogFile -Message "The object must be removed or mail enabled." -ToScreen   
                     Write-LogError -LogPath $script:sLogFile -Message "EXITING." -ToScreen 
                     cleanupSessions
-                    Stop-Log -LogPath $script:sLogFile -ToScreen  
+					Stop-Log -LogPath $script:sLogFile -ToScreen  
+					archiveFiles
                 }
                 else 
                 {
@@ -3411,6 +3489,7 @@ Function buildMembershipArray
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -3496,6 +3575,7 @@ Function testOffice365Recipient
             Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
             cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -3514,6 +3594,7 @@ Function testOffice365Recipient
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -3573,6 +3654,7 @@ Function testOffice365GroupMigrated
 			Write-LogError -LogPath $script:sLogFile -Message 'All sub lists or lists with permissions must be migrated before proceeding.' -ToScreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 	End 
@@ -3590,6 +3672,7 @@ Function testOffice365GroupMigrated
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -3641,6 +3724,7 @@ Function moveGroupToOU
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -3657,6 +3741,7 @@ Function moveGroupToOU
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -3706,6 +3791,7 @@ Function replicateDomainControllers
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -3717,6 +3803,7 @@ Function replicateDomainControllers
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -3780,6 +3867,7 @@ Function invokeADConnect
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -3791,6 +3879,7 @@ Function invokeADConnect
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -3867,6 +3956,7 @@ Function createOffice365DistributionList
 			Write-LogError -LogPath $script:sLogFile -Message "This script only supports universal distribution and universal security group conversions." -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 		$script:onpremisesdlConfiguration.GroupType
 	}
@@ -3881,6 +3971,7 @@ Function createOffice365DistributionList
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -3897,6 +3988,7 @@ Function createOffice365DistributionList
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -3963,6 +4055,7 @@ Function setOffice365DistributionListSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		try 
@@ -3976,6 +4069,7 @@ Function setOffice365DistributionListSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		try
@@ -4008,6 +4102,7 @@ Function setOffice365DistributionListSettings
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -4055,6 +4150,7 @@ Function removeOnPremisesDistributionGroup
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -4071,6 +4167,7 @@ Function removeOnPremisesDistributionGroup
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -4125,6 +4222,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 				cleanupSessions
 				Stop-Log -LogPath $script:sLogFile -ToScreen
+				archiveFiles
 				Break
 			}
 		}
@@ -4139,6 +4237,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 				cleanupSessions
 				Stop-Log -LogPath $script:sLogFile -ToScreen
+				archiveFiles
 				Break
 			}
 		}
@@ -4153,6 +4252,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 				cleanupSessions
 				Stop-Log -LogPath $script:sLogFile -ToScreen
+				archiveFiles
 				Break
 			}
 		}
@@ -4167,6 +4267,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 				cleanupSessions
 				Stop-Log -LogPath $script:sLogFile -ToScreen
+				archiveFiles
 				Break
 			}
 		}
@@ -4181,6 +4282,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 				cleanupSessions
 				Stop-Log -LogPath $script:sLogFile -ToScreen
+				archiveFiles
 				Break
 			}
 		}
@@ -4195,6 +4297,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 				cleanupSessions
 				Stop-Log -LogPath $script:sLogFile -ToScreen
+				archiveFiles
 				Break
 			}
 		}
@@ -4209,6 +4312,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 				cleanupSessions
 				Stop-Log -LogPath $script:sLogFile -ToScreen
+				archiveFiles
 				Break
 			}
 		}
@@ -4229,6 +4333,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -4288,6 +4393,7 @@ Function recordDistributionGroupMembership
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -4309,6 +4415,7 @@ Function recordDistributionGroupMembership
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -4363,6 +4470,7 @@ Function recordMovedOriginalDistributionGroupProperties
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -4384,6 +4492,7 @@ Function recordMovedOriginalDistributionGroupProperties
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -4456,6 +4565,7 @@ Function recordOriginalMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4478,6 +4588,7 @@ Function recordOriginalMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4500,6 +4611,7 @@ Function recordOriginalMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4522,6 +4634,7 @@ Function recordOriginalMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4555,6 +4668,7 @@ Function recordOriginalMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4577,6 +4691,7 @@ Function recordOriginalMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4610,6 +4725,7 @@ Function recordOriginalMultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -4663,6 +4779,7 @@ Function removeOnPremisesDistributionGroup
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -4684,6 +4801,7 @@ Function removeOnPremisesDistributionGroup
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -4742,6 +4860,7 @@ Function createOnPremisesDynamicDistributionGroup
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -4763,6 +4882,7 @@ Function createOnPremisesDynamicDistributionGroup
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -4840,6 +4960,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4859,6 +4980,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4874,6 +4996,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -4890,6 +5013,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -4911,6 +5035,7 @@ Function setOnPremisesDynamicDistributionGroupSettings
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -4994,6 +5119,7 @@ Function createAndUpdateMailOnMicrosoftAddress
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -5015,6 +5141,7 @@ Function createAndUpdateMailOnMicrosoftAddress
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -5092,6 +5219,7 @@ Function createRemoteRoutingContact
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -5113,6 +5241,7 @@ Function createRemoteRoutingContact
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -5189,6 +5318,7 @@ Function setRemoteRoutingContactSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -5204,6 +5334,7 @@ Function setRemoteRoutingContactSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -5219,6 +5350,7 @@ Function setRemoteRoutingContactSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -5234,6 +5366,7 @@ Function setRemoteRoutingContactSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -5250,6 +5383,7 @@ Function setRemoteRoutingContactSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -5265,6 +5399,7 @@ Function setRemoteRoutingContactSettings
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -5286,6 +5421,7 @@ Function setRemoteRoutingContactSettings
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -5346,6 +5482,7 @@ Function resetDLMemberOf
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -5368,6 +5505,7 @@ Function resetDLMemberOf
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -5439,6 +5577,7 @@ Function resetCloudDLMemberOf
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
@@ -5461,6 +5600,7 @@ Function resetCloudDLMemberOf
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile
+			archiveFiles
 		}
 	}
 }
@@ -5532,6 +5672,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -5550,6 +5691,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -5582,6 +5724,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -5600,6 +5743,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -5632,6 +5776,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -5650,6 +5795,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -5684,6 +5830,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -5702,6 +5849,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -5735,6 +5883,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -5753,6 +5902,7 @@ Function resetOriginalDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -5788,6 +5938,7 @@ Function resetOriginalDistributionListSettings
 					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 					cleanupSessions
 					Stop-Log -LogPath $script:sLogFile -ToScreen
+					archiveFiles
 					Break
 				}
 			}
@@ -5811,6 +5962,7 @@ Function resetOriginalDistributionListSettings
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -5883,6 +6035,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -5910,6 +6063,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -5944,6 +6098,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -5971,6 +6126,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -6005,6 +6161,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -6032,6 +6189,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -6068,6 +6226,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -6095,6 +6254,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -6131,6 +6291,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -6159,6 +6320,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -6205,6 +6367,7 @@ Function resetCloudDistributionListSettings
 					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 					cleanupSessions
 					Stop-Log -LogPath $script:sLogFile -ToScreen
+					archiveFiles
 					Break
 				}
 			}
@@ -6238,6 +6401,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -6266,6 +6430,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -6300,6 +6465,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -6327,6 +6493,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -6361,6 +6528,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 					Try
@@ -6388,6 +6556,7 @@ Function resetCloudDistributionListSettings
 						Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 						cleanupSessions
 						Stop-Log -LogPath $script:sLogFile -ToScreen
+						archiveFiles
 						Break
 					}
 				}
@@ -6412,6 +6581,7 @@ Function resetCloudDistributionListSettings
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -6485,6 +6655,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -6502,6 +6673,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -6544,6 +6716,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -6566,6 +6739,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -6588,6 +6762,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -6610,6 +6785,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -6632,6 +6808,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 		Try 
@@ -6654,6 +6831,7 @@ Function recordOriginalO365MultivaluedAttributes
 			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 			cleanupSessions
 			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 			Break
 		}
 	}
