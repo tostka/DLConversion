@@ -144,7 +144,9 @@ with permissions, membership, restrictions, forwarding to cloud only objects or 
 directly impacts the ability to do this work in a timely fashion.  A switch is utilized to override tracking these should the administrator not care.
 
 Version:		1.8.1
-
+Author:			Timothy J. McMichael
+Purpose/Chnage: Correcting get-distributionGroupMember for multiple domains.  In the current confige using -domainController only returns members from the domain of the controller specified.
+We need to ignore the scope and allow it to search all domains that Exchange is aware of.
  
 .EXAMPLE
 
@@ -3013,7 +3015,7 @@ Function collectOnPremisesDLConfigurationMembership
 	{
 		Try 
 		{
-            $script:onpremisesdlconfigurationMembership = get-distributionGroupMember -identity $dlToConvert -resultsize unlimited -domaincontroller $script:adDomainController
+            $script:onpremisesdlconfigurationMembership = get-distributionGroupMember -identity $dlToConvert -resultsize unlimited -ignoreDefaultScope
 		}
 		Catch 
 		{
