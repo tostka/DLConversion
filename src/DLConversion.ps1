@@ -151,6 +151,10 @@ We need to ignore the scope and allow it to search all domains that Exchange is 
 Version:		1.8.2
 Author:			Timothy J. McMichael
 Purpose/Change: Correcting for distribution lists that contain apostrophies.
+
+Version:		1.8.3
+Author:			Timothy J. McMichael
+Purpose/Change: Implementing changes to ad server settings to ensure view entire forest is true.
  
 .EXAMPLE
 
@@ -191,7 +195,7 @@ Import-Module PSLogging
 #----------------------------------------------------------[Declarations]----------------------------------------------------------
 
 #Script Version
-$sScriptVersion = "1.8"
+$sScriptVersion = "1.8.2"
 
 #Log File Info
 <###ADMIN###>$script:sLogPath = "C:\Scripts\Working\"
@@ -741,6 +745,79 @@ Function replicateDomainControllersInbound
 			Write-LogError -LogPath $script:sLogFile -Message "The domain controller could not be replicated - this does not cause the script to abend..." -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
+Function setADServerSettings
+
+.DESCRIPTION
+
+This function sets the ad server settings to view entire forest.
+
+.PARAMETER 
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function setADServerSettings
+
+{
+	Begin 
+	{
+		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function setADServerSettings...' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message 'This function sets the ad sever settings to view entire forest....' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+			set-adServerSettings -viewEntireForest:$TRUE
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Exiting function setADServerSettings...' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'The ad forest settings were set to view entire forest..' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			$error.clear()
+		}
+		else
+		{
+			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function setADServerSettings...' -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message "The AD forest settings were not set to view entire forest...." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
 		}
 	}
 }
@@ -1658,6 +1735,18 @@ Function importOnPremisesPowershellSession
 		Try 
 		{
             Import-PSSession $script:onPremisesPowerShellSession
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+		Try 
+		{
+            setADServerSettings
 		}
 		Catch 
 		{
