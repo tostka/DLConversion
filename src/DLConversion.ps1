@@ -5371,13 +5371,13 @@ Function setRemoteRoutingContactSettings
 	Begin 
 	{
 		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function setOnPremisesDynamicDistributionGroupSettings...' -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message 'Entering function setRemoteRoutingContactSettings...' -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message 'This funciton sets the properties of the remote routing contact.' -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 
 		#Get the mail contact created to replace the distribution group.
 		
-		$functionContact = get-mailcontact -identity $script:randomContactName -domaincontroller $script:adDomainController
+		$functionContact = get-mailuser -identity $script:randomContactName -domaincontroller $script:adDomainController
 		$functionPrimarySMTPAddress = $NULL
 
 		#Iterate through the list of proxy addresses and find the first address that is not an onmicrosoft.com address and that is an SMTP address.
@@ -5406,7 +5406,7 @@ Function setRemoteRoutingContactSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Setting initial properties of the mail contact...' -toscreen
 
-			Set-mailContact -Identity $script:randomContactName -HiddenFromAddressListsEnabled $TRUE -domaincontroller $script:adDomainController -CustomAttribute1 "MigratedByScript" -CustomAttribute2 $script:onpremisesdlConfiguration.primarySMTPAddress
+			Set-mailUser -Identity $script:randomContactName -HiddenFromAddressListsEnabled $TRUE -domaincontroller $script:adDomainController -CustomAttribute1 "MigratedByScript" -CustomAttribute2 $script:onpremisesdlConfiguration.primarySMTPAddress
 		}
 		Catch 
 		{
@@ -5422,7 +5422,7 @@ Function setRemoteRoutingContactSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Disabling automatic email address policy on the mail contact...' -toscreen
 
-			Set-mailContact -Identity $script:randomContactName -emailAddressPolicyEnabled:$FALSE -domaincontroller $script:adDomainController
+			Set-mailUser -Identity $script:randomContactName -emailAddressPolicyEnabled:$FALSE -domaincontroller $script:adDomainController
 		}
 		Catch 
 		{
@@ -5438,7 +5438,7 @@ Function setRemoteRoutingContactSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Setting primary SMTP address of the mail contact to be any of the valid proxies previously located...' -toscreen
 
-			Set-mailContact -Identity $script:randomContactName -primarySMTPAddress $functionPrimarySMTPAddress  -domaincontroller $script:adDomainController
+			Set-mailUser -Identity $script:randomContactName -primarySMTPAddress $functionPrimarySMTPAddress  -domaincontroller $script:adDomainController
 		}
 		Catch 
 		{
@@ -5454,7 +5454,7 @@ Function setRemoteRoutingContactSettings
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Removing the remote routing address from the proxy addresses...' -toscreen
 
-			Set-mailContact -Identity $script:randomContactName -EmailAddresses @{remove=$script:remoteRoutingAddress}  -domaincontroller $script:adDomainController
+			Set-mailUser -Identity $script:randomContactName -EmailAddresses @{remove=$script:remoteRoutingAddress}  -domaincontroller $script:adDomainController
 		}
 		Catch 
 		{
@@ -5464,30 +5464,30 @@ Function setRemoteRoutingContactSettings
 			archiveFiles
 			Break
 		}
-		Try 
-		{
+		#Try (Removed in version 1.9 as this is not required when using mail users.)
+		#{
 			#Set the master account sid to Self.
 			#This is necessary to trick proeprties like ManagedBY which require the contact to have a SID.
 
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Setting the master account SID to self...' -toscreen
+		#	Write-LogInfo -LogPath $script:sLogFile -Message 'Setting the master account SID to self...' -toscreen
 
-			invoke-command -ScriptBlock { Set-ADObject $args[0] -replace @{"msExchMasterAccountSid"=$args[1]} } -ArgumentList $functionContact.distinguishedName,$script:wellKnownSelfAccountSid -Session $script:onPremisesADDomainControllerPowerShellSession
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			archiveFiles
-			Break
-		}
+		#	invoke-command -ScriptBlock { Set-ADObject $args[0] -replace @{"msExchMasterAccountSid"=$args[1]} } -ArgumentList $functionContact.distinguishedName,$script:wellKnownSelfAccountSid -Session $script:onPremisesADDomainControllerPowerShellSession
+		#}
+		#Catch 
+		#{
+		#	Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+		#	cleanupSessions
+		#	Stop-Log -LogPath $script:sLogFile -ToScreen
+		#	archiveFiles
+		#	Break
+		#}
 		Try 
 		{
 			#Record the settings of the new mail contact to a variable for later use.
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Recording the new mail contact information to a variable...' -toscreen
 
-			$script:onPremisesNewContactConfiguration = Get-mailContact -identity $script:randomContactName -domaincontroller $script:adDomainController
+			$script:onPremisesNewContactConfiguration = Get-mailUser -identity $script:randomContactName -domaincontroller $script:adDomainController
 		}
 		Catch 
 		{
@@ -5503,14 +5503,14 @@ Function setRemoteRoutingContactSettings
 		If ($?) 
 		{
 			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Exiting function setOnPremisesDynamicDistributionGroupSettings...' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Exiting function setRemoteRoutingContactSettings...' -toscreen
 			Write-LogInfo -LogPath $script:sLogFile -Message 'The properties have been set successfully.' -toscreen
 			Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 		}
 		else
 		{
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
-			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function setOnPremisesDynamicDistributionGroupSettings...' -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message 'Exiting function setRemoteRoutingContactSettings...' -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message "The properties could not be set successfully." -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
 			Write-LogError -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
