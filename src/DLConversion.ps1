@@ -5556,7 +5556,7 @@ Function resetDLMemberOf
 		Write-LogInfo -LogPath $script:sLogFile -Message 'This function adds the mail contact back to the groups it was previously a member of.' -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message '******************************************************************' -toscreen
 
-		$functionContact = get-mailcontact -identity $script:randomContactName -domainController $script:adDomainController
+		$functionContact = Get-mailUser -identity $script:randomContactName -domainController $script:adDomainController
 	}
 	Process 
 	{
