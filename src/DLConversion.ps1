@@ -155,6 +155,10 @@ Purpose/Change: Correcting for distribution lists that contain apostrophies.
 Version:		1.8.3
 Author:			Timothy J. McMichael
 Purpose/Change: Implementing changes to ad server settings to ensure view entire forest is true.
+
+Version:		1.9
+Author:			Timothy J. McMichael
+Purpose/Change:	Implement code logic to manage and migrated send as permissions.  First change to to deprecate the mail contact and convert to a mail user.
  
 .EXAMPLE
 
@@ -321,7 +325,8 @@ $script:onPremisesMovedDLConfiguration = $NULL	#Holds the seetings of the distri
 [array]$script:originalManagedBy = @()
 $script:randomContactName = $NULL
 $script:remoteRoutingAddress = $NULL
-$script:wellKnownSelfAccountSid = "S-1-5-10"
+#$script:wellKnownSelfAccountSid = "S-1-5-10"  Removed in version 1.9 no longer necessary.
+$script:randomContactPassword = $NULL
 $script:onPremisesNewContactConfiguration = $NULL
 
 $script:arrayCounter=0	#Counter used to build arrays for the recipient arrays.
