@@ -4840,6 +4840,7 @@ Function recordOriginalMultivaluedAttributes
 		
 		$functionGroupIdentity = $script:onPremisesMovedDLConfiguration.identity.tostring()	#Function variable to hold the identity of the group.
 		$fixedFunctionGroupIdentity = "$($functionGroupIdentity.Replace("'","''"))"
+		$functionGroupSamAccountName = $script:onPremisesMovedDLConfiguration.samAccountName.tostring()
 		$functionCommand = $NULL	#Holds the expression that we will be executing to determine multi-valued membership.
 		[array]$functionGroupArray = @()
 		[array]$functionPermissions=@()
@@ -4996,10 +4997,13 @@ Function recordOriginalMultivaluedAttributes
 		Try 
 		{
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all send as for the identity...' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Determining the netbios identity of the migrated group...' -toscreen
+
+			$functionNetbiosIdentity = invoke-command -ScriptBlock {get-AdGroup -identity $args[0] -properties $args[1] } -ArgumentList $functionGroupSamAccountName,"msDS-PrincipalName" -Session $script:onPremisesADDomainControllerPowerShellSession
 
 			foreach ( $loopGroup in $functionAllGroups)
 			{
-				$functionPermissions = get-AdPermission -identity $loopGroup.identity | where {($_.identity -like $fixedFunctionGroupIdentity) -and ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and -not ($_.User -like "NT AUTHORITY\SELF")}
+				$functionPermissions = get-AdPermission -identity $loopGroup.identity | where {($_.user -eq $functionNetbiosIdentity) -and ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and -not ($_.User -like "NT AUTHORITY\SELF")}
 
 				foreach ($permission in $functionPermissions)
 				{
