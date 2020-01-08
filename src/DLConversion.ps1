@@ -5001,6 +5001,8 @@ Function recordOriginalMultivaluedAttributes
 
 			$functionNetbiosIdentity = invoke-command -ScriptBlock {get-AdGroup -identity $args[0] -properties $args[1] } -ArgumentList $functionGroupSamAccountName,"msDS-PrincipalName" -Session $script:onPremisesADDomainControllerPowerShellSession
 
+			Write-LogInfo -LogPath $script:sLogFile -Message $functionNetbiosIdentity -toscreen
+
 			foreach ( $loopGroup in $functionAllGroups)
 			{
 				$functionPermissions = get-AdPermission -identity $loopGroup.identity | where {($_.user -eq $functionNetbiosIdentity) -and ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and -not ($_.User -like "NT AUTHORITY\SELF")}
