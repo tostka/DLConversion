@@ -3238,6 +3238,72 @@ Function collectOnPremisesDLConfigurationMembership
 <#
 *******************************************************************************************************
 
+Function collectOnPremisesDLConfigurationSendAs
+
+.DESCRIPTION
+
+This function collects all of the identities that are send as.
+
+.PARAMETER <Parameter_Name>
+
+NONE
+
+.INPUTS
+
+NONE
+
+.OUTPUTS 
+
+NONE
+
+*******************************************************************************************************
+#>
+
+Function collectOnPremisesDLConfigurationSendAs
+{
+	Param ()
+
+	Begin 
+	{
+	    Write-LogInfo -LogPath $script:sLogFile -Message 'This function collections the on premises DL send as....' -toscreen
+	}
+	Process 
+	{
+		Try 
+		{
+            $script:onPremisesDLSendAsMembers = Get-DistributionGroup -identity $dlToConvert -domaincontroller $script:adDomainController | get-adPermission | where {($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and -not ($_.User -like "NT AUTHORITY\SELF")}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+	}
+	End 
+	{
+		If ($?) 
+		{
+            Write-LogInfo -LogPath $script:sLogFile -Message 'The DL send as was collected successfully.' -toscreen
+            Write-LogInfo -LogPath $script:sLogFile -Message ' ' -toscreen
+		}
+		else
+		{
+
+			Write-LogError -LogPath $script:sLogFile -Message "The send as could not be collected - exiting." -toscreen
+			Write-LogError -LogPath $script:sLogFile -Message $error[0] -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+		}
+	}
+}
+
+<#
+*******************************************************************************************************
+
 Function buildMembershipArray
 
 .DESCRIPTION
@@ -3310,7 +3376,11 @@ Function buildMembershipArray
 		{
 			$functionArray = $script:onpremisesdlConfiguration.BypassModerationFromSendersOrMembers
 		}
-
+		elseif ($arrayname -eq "onPremisesDLSendAsMembers")
+		{
+			$functionArray = $script:onPremisesDLSendAsMembers
+		}
+		
 		#Based on the operation type passed act on the array of members.
 		
         if ( $operationType -eq 'DLMembership' ) 
@@ -6989,6 +7059,8 @@ importOffice365PowershellSession  #Function call to import the Office 365 powers
 collectOnPremsiesDLConfiguration  #Function call to gather the on premises DL information.
 
 collectOffice365DLConfiguation  #Function call to gather the Office 365 DL information.
+
+collectOnPremisesDLConfigurationSendAs  #Function call to gather the send as rights for the DL configuration.
 
 performOffice365SafetyCheck #Checks to see if the distribution list provided has already been migrated.
 
