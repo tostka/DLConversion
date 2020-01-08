@@ -3380,7 +3380,7 @@ Function buildMembershipArray
 		{
 			$functionArray = $script:onPremisesDLSendAsMembers
 		}
-		
+
 		#Based on the operation type passed act on the array of members.
 		
         if ( $operationType -eq 'DLMembership' ) 
@@ -3533,6 +3533,74 @@ Function buildMembershipArray
                 }
             }
 		}
+
+		#Operation type is send as array.
+
+        elseif ( $operationType -eq "SendAs"  )
+        {
+            foreach ( $member in $functionArray )
+            {
+				#Attempt to get a recipient.  If a recipient is returned the object is mail enabled.
+				#This approach was taken becuase the attributes are stored in DN format on premises - and may not reflect a mail enabled object.
+				#Managed by can be edited directly through AD and may contain non-mail enabled objects.
+
+                if ( Get-Recipient -identity $member.identity -errorAction SilentlyContinue )
+                {
+					Write-LogInfo -LogPath $script:sLogFile -Message "Processing Send As member:" -ToScreen
+					Write-LogInfo -LogPath $script:sLogFile -Message $member -ToScreen
+
+					$functionRecipient = get-recipient -identity $member.identity
+
+					if ( $functionRecipient.CustomAttribute1 -eq "MigratedByScript")
+					{
+						Write-LogInfo -LogPath $script:sLogFile -Message "This member is a migrated DL converted to mail contact." -ToScreen
+
+						$recipientObject = New-Object PSObject -Property @{
+							Alias = $functionRecipient.Alias
+							Name = $functionRecipient.Name
+							PrimarySMTPAddressOrUPN = $functionRecipient.CustomAttribute2
+							GUID = $NULL
+							RecipientType = "MailUniversalDistributionGroup"
+							RecipientOrUser = "Recipient"
+						}
+					}
+					else 
+					{
+						Write-LogInfo -LogPath $script:sLogFile -Message "This member is a mail enabled user." -ToScreen
+
+						$recipientObject = New-Object PSObject -Property @{
+							Alias = $functionRecipient.Alias
+							Name = $functionRecipient.Name
+							PrimarySMTPAddressOrUPN = $functionRecipient.PrimarySMTPAddress
+							GUID = $NULL
+							RecipientType = $functionRecipient.RecipientType
+							RecipientOrUser = "Recipient"
+						}
+					}
+
+					$functionOutput += $recipientObject
+                }
+                elseif ($ignoreVariable -eq $FALSE )
+                {
+                    Write-LogError -LogPath $script:sLogFile -Message $member -ToScreen
+                    Write-LogError -LogPath $script:sLogFile -Message "A non-mail enabled or Office 365 object was found in ManagedBy." -ToScreen
+                    Write-LogError -LogPath $script:sLogFile -Message "Script invoked without skipping invalid DL Member." -ToScreen
+                    Write-LogError -LogPath $script:sLogFile -Message "The object must be removed or mail enabled." -ToScreen   
+                    Write-LogError -LogPath $script:sLogFile -Message "EXITING." -ToScreen 
+                    cleanupSessions
+					Stop-Log -LogPath $script:sLogFile -ToScreen  
+					archiveFiles
+                }
+                else 
+                {
+                    #DO nothing - the user indicated that invalid recipients that cannot be migrated can be skipped.
+
+                    Write-LogInfo -LogPath $script:sLogFile -Message "The following object was intentionally skipped - object type not replicated to Exchange Online" -ToScreen
+                    Write-LogInfo -LogPath $script:sLogFile -Message $member -ToScreen
+                }
+            }
+		}
+
 
 		#Operation is a remaining multivalued attribute.
 
