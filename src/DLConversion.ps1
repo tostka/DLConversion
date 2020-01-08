@@ -276,6 +276,7 @@ $script:archiveXMLPath = $NULL
 <###ADMIN###>$script:originalBypassModerationFromSendersOrMembersXMLName="OnPremisesBypass.xml"
 <###ADMIN###>$script:originalForwardingAddressXMLName="onPremisesForwardAddress.xml"
 <###ADMIN###>$script:originalForwardingSMTPAddressXMLName="onPremisesForwardingSMTPAddress.xml"
+<###ADMIN###>$script:originalSendAsXMLName="onPremisesSendAs.xml"
 
 <###ADMIN###>$script:onpremisesdlconfigurationMembershipArrayXMLName = "onpremisesdlconfigurationMembershipArray.xml"
 <###ADMIN###>$script:onpremisesdlconfigurationManagedByArrayXMLName = "onpremisesdlconfigurationManagedBy.xml" 
@@ -309,6 +310,7 @@ $script:originalRejectMessagesFromXML=Join-Path $script:backupXMLPath -ChildPath
 $script:originalBypassModerationFromSendersOrMembersXML=Join-Path $script:backupXMLPath -ChildPath $script:originalBypassModerationFromSendersOrMembersXMLName
 $script:originalForwardingSMTPAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingSMTPAddressXMLName
 $script:originalForwardingAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingAddressXMLName
+$script:originalSendAsXML=Join-Path $script:backupXMLPath -ChildPath $script:originalSendAsXMLName
 
 #Establish misc.
 
@@ -326,6 +328,7 @@ $script:onPremisesMovedDLConfiguration = $NULL	#Holds the seetings of the distri
 [array]$script:originalForwardingSMTPAddress = @()
 [array]$script:originalBypassModerationFromSendersOrMembers = @()
 [array]$script:originalManagedBy = @()
+[array]$script:originalSendAs = @()
 $script:randomContactName = $NULL
 $script:remoteRoutingAddress = $NULL
 #$script:wellKnownSelfAccountSid = "S-1-5-10"  Removed in version 1.9 no longer necessary.
@@ -345,6 +348,7 @@ $script:newDynamicDLAddress = $NULL	#Primary SMTP address built for the dynamic 
 [array]$script:originalO365BypassModerationFromSendersOrMembers = $NULL #Array of all groups that are cloud only that contain the migrated DL as bypass moderation.
 [array]$script:originalO365ForwardingAddress = $NULL #Array of all objects where the migrated group is set for explicity forwarding address.
 [array]$script:originalO365MemberOf = $NULL #Array of all cloud only distribution groups where the migrated group is a member of the distribution group.
+[array]$script:originalO365SendAs = $NULL
 
 <###ADMIN###>$script:originalO365GrantSendOnBehalfToXMLName="o365GrantSendOnBehalfTo.xml"
 <###ADMIN###>$script:originalO365AcceptMessagesFromXMLName="o365AcceptMessagesFrom.xml"
@@ -353,6 +357,7 @@ $script:newDynamicDLAddress = $NULL	#Primary SMTP address built for the dynamic 
 <###ADMIN###>$script:originalO365BypassModerationFromSendersOrMembersXMLName="o365Bypass.xml"
 <###ADMIN###>$script:originalForwardingAddressXMLName="o365ForwardAddress.xml"
 <###ADMIN###>$script:originalO365MemberOfXMLName="o365MemberOf.xml"
+<###ADMIN###>$script:originalO365SendAsXMLName="o365SendAs.xml"
 
 
 $script:originalO365GrantSendOnBehalfToXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365GrantSendOnBehalfToXMLName
@@ -362,6 +367,7 @@ $script:originalO365RejectMessagesFromXML=Join-Path $script:backupXMLPath -Child
 $script:originalO365BypassModerationFromSendersOrMembersXML=Join-Path $script:backupXMLPath -ChildPath $script:originalo365BypassModerationFromSendersOrMembersXMLName
 $script:originalO365ForwardingAddressXML=Join-Path $script:backupXMLPath -ChildPath $script:originalForwardingAddressXMLName
 $script:originalO365MemberOfXML=Join-Path $script:backupXMLPath -ChildPath $script:originalO365MemberOfXMLName
+$script:originalO365SendAsXML=Join-Path $script:backupXMLPath -ChildPath $script:originalO365SendAsXMLName
 
 [array]$script:originalO365GroupGrantSendOnBehalfTo = $NULL	#Array of all office 365 groups that are cloud only that contain the migrated DL as grant send on behalf to.
 [array]$script:originalO365GroupAcceptMessagesOnlyFromDLMembers = $NULL #Array of all office 365 groups that are cloud only that contain the mgirated DL as accept messages only from.
@@ -2638,6 +2644,22 @@ Function backupOnPremisesMultiValuedAttributes
 			archiveFiles
 			Break
 		}
+		Try 
+		{
+			if ( $script:originalSendAs -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing send as to XML...' -toscreen
+				$script:originalSendAs | Export-CLIXML -Path $script:originalSendAsXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
 	}
 	End 
 	{
@@ -2794,6 +2816,22 @@ Function backupO365RetainedSettings
 			{
 				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing o365 Member of to a xml file...' -toscreen
 				$script:originalO365MemberOf | Export-CLIXML -Path $script:originalO365MemberOfXML
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+		Try 
+		{
+			if ( $script:originalO365SendAs -ne $NULL )
+			{
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Writing o365 Send As to a xml file...' -toscreen
+				$script:originalO365SendAs | Export-CLIXML -Path $script:originalO365SendAsXML
 			}
 		}
 		Catch 
