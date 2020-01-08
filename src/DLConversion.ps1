@@ -247,6 +247,7 @@ $script:newOffice365DLConfigurationMembership = $NULL
 [array]$script:onpremisesdlconfigurationAcceptMessagesOnlyFromSendersOrMembers = @() #Array of psObjects that represent accept messages only from senders or members membership.
 [array]$script:onpremisesdlconfigurationRejectMessagesFromSendersOrMembers = @() #Array of psObjects that represent reject messages only from senders or members membership.
 [array]$script:onPremsiesDLBypassModerationFromSendersOrMembers = @() #Array of psObjects that represent bypass moderation only from senders or members membership.
+[array]$script:onPremisesDLSendAsMembers = @()
 
 $script:newOffice365DLConfiguration=$NULL
 $script:x500Address=$NULL
@@ -3000,6 +3001,21 @@ Function backupOnPremisesDLArrays
 			if ( $script:onPremsiesDLBypassModerationFromSendersOrMembers -ne $NULL )
 			{
 				$script:onPremsiesDLBypassModerationFromSendersOrMembers | Export-CLIXML -Path $script:onPremsiesDLBypassModerationFromSendersOrMembersXMLPath
+			}
+		}
+		Catch 
+		{
+            Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+            cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+		Try 
+		{
+			if ( $script:onPremisesDLSendAsMembers -ne $NULL )
+			{
+				$script:onPremisesDLSendAsMembers | Export-CLIXML -Path $script:onPremisesDLSendAsXMLPath
 			}
 		}
 		Catch 
