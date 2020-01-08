@@ -4842,6 +4842,8 @@ Function recordOriginalMultivaluedAttributes
 		$fixedFunctionGroupIdentity = "$($functionGroupIdentity.Replace("'","''"))"
 		$functionCommand = $NULL	#Holds the expression that we will be executing to determine multi-valued membership.
 		[array]$functionGroupArray = @()
+		[array]$functionPermissions=@()
+		[array]$functionAllGroups=@()
 		$functionRecipientObject = $NULL
 		
 		Write-LogInfo -LogPath $script:sLogFile -Message 'The following group identity is the filtered name.' -toscreen
@@ -4851,11 +4853,28 @@ Function recordOriginalMultivaluedAttributes
 	{
 		Try 
 		{
+			#There are two try / catch statements that cannot utilize filters.  In this case all of the distribution groups in the organization need to be enumerated.
+			#This function gathers them all here - so we can work with them later.
+
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all distribution lists for non-filtered queries....' -toscreen
+
+            $functionAllGroups = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited }
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+		Try 
+		{
 			#Using a filter detemrine all groups this group had grant send on behalf to.
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all grantSendOnBehalfTo for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { GrantSendOnBehalfTo -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { GrantSendOnBehalfTo -eq '$fixedFunctionGroupIdentity' }"
             
             $script:originalGrantSendOnBehalfTo = Invoke-Expression $functionCommand
 		
@@ -4878,7 +4897,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all AcceptMessagesOnlyFromDLMembers for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { AcceptMessagesOnlyFromDLMembers -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { AcceptMessagesOnlyFromDLMembers -eq '$fixedFunctionGroupIdentity' }"
             
             $script:originalAcceptMessagesFrom = Invoke-Expression $functionCommand
 		
@@ -4901,7 +4920,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all ManagedBy for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { ManagedBy -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { ManagedBy -eq '$fixedFunctionGroupIdentity' }"
             
             $script:originalManagedBy = Invoke-Expression $functionCommand
 		
@@ -4924,7 +4943,7 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all RejectMessagesFromDLMembers for the identity...' -toscreen
 
-            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { RejectMessagesFromDLMembers -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-distributionGroup -resultsize unlimited -Filter { RejectMessagesFromDLMembers -eq '$fixedFunctionGroupIdentity' }"
             
             $script:originalRejectMessagesFrom = Invoke-Expression $functionCommand
 		
@@ -4943,28 +4962,49 @@ Function recordOriginalMultivaluedAttributes
 		}
 		Try 
 		{
-			#Perform a server side search of all groups where this group was set to bypass moderation.
-			#Note:  There is no filerable attribute for this - this operation can be very expensive, memory intensive, and time consuming.
-			#Note:  Administrators may consider commenting out these portions and not attempting to perserve this for other DL migrations.
-
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all bypass moderations for the identity...' -toscreen
 
-			$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $fixedFunctionGroupIdentity } }
+			#$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $fixedFunctionGroupIdentity } }
 
-			foreach ( $loopGroup in $functionGroupArray)
+			foreach ( $loopGroup in $functionAllGroups)
 			{
-				Write-LogInfo -LogPath $script:sLogFile -Message $loopGroup.primarySMTPAddress -ToScreen
+				if ($loopGroup.bypassModerationFromSendersOrMembers -like $fixedFunctionGroupIdentity )
+				{
+					Write-LogInfo -LogPath $script:sLogFile -Message $loopGroup.primarySMTPAddress -ToScreen
 
-				#Create a custom object of each of the DLs found for later use.
+					#Create a custom object of each of the DLs found for later use.
 
-				$functionRecipientObject = New-Object PSObject -Property @{
-					DistinguishedName = $loopgroup.distinguishedName
-					Alias = $loopGroup.Alias
-					Name = $loopGroup.Name
-					PrimarySMTPAddressOrUPN = $loopGroup.primarySMTPAddress
+					$functionRecipientObject = New-Object PSObject -Property @{
+						DistinguishedName = $loopgroup.distinguishedName
+						Alias = $loopGroup.Alias
+						Name = $loopGroup.Name
+						PrimarySMTPAddressOrUPN = $loopGroup.primarySMTPAddress
 				}
 
 				$script:originalBypassModerationFromSendersOrMembers+=$functionRecipientObject		
+				}
+			}
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+		Try 
+		{
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all send as for the identity...' -toscreen
+
+			foreach ( $loopGroup in $functionAllGroups)
+			{
+				$functionPermissions = get-AdPermission -identity $loopGroup.identity | where {($_.identity -like $fixedFunctionGroupIdentity) -and ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and -not ($_.User -like "NT AUTHORITY\SELF")}
+
+				foreach ($permission in $functionPermissions)
+				{
+					$script:originalSendAs+=$permission
+				}
 			}
 		}
 		Catch 
@@ -4981,47 +5021,13 @@ Function recordOriginalMultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all forwarding addresses for the identity...' -toscreen
 
-            $functionCommand = "get-mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$fixedFunctionGroupIdentity' } -domainController '$script:adDomainController'"
+            $functionCommand = "get-mailbox -resultsize unlimited -Filter { ForwardingAddress -eq '$fixedFunctionGroupIdentity' }"
             
             $script:originalForwardingAddress = Invoke-Expression $functionCommand
 		
 			foreach ( $member in $script:originalForwardingAddress )
 			{
 				Write-LogInfo -LogPath $script:sLogFile -Message $member.primarySMTPAddress -ToScreen
-			}
-		}
-		Catch 
-		{
-			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-			cleanupSessions
-			Stop-Log -LogPath $script:sLogFile -ToScreen
-			archiveFiles
-			Break
-		}
-		Try 
-		{
-			#Perform a server side search of all groups where this group was set to bypass moderation.
-			#Note:  There is no filerable attribute for this - this operation can be very expensive, memory intensive, and time consuming.
-			#Note:  Administrators may consider commenting out these portions and not attempting to perserve this for other DL migrations.
-
-			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all bypass moderations for the identity...' -toscreen
-
-			$functionGroupArray = invoke-command -scriptBlock { get-distributiongroup -resultsize unlimited -domainController $script:adDomainController | where { $_.bypassModerationFromSendersOrMembers -eq $fixedFunctionGroupIdentity } }
-
-			foreach ( $loopGroup in $functionGroupArray)
-			{
-				Write-LogInfo -LogPath $script:sLogFile -Message $loopGroup.primarySMTPAddress -ToScreen
-
-				#Create a custom object of each of the DLs found for later use.
-
-				$functionRecipientObject = New-Object PSObject -Property @{
-					DistinguishedName = $loopgroup.distinguishedName
-					Alias = $loopGroup.Alias
-					Name = $loopGroup.Name
-					PrimarySMTPAddressOrUPN = $loopGroup.primarySMTPAddress
-				}
-
-				$script:originalBypassModerationFromSendersOrMembers+=$functionRecipientObject		
 			}
 		}
 		Catch 
