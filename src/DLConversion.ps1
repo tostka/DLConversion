@@ -5001,11 +5001,11 @@ Function recordOriginalMultivaluedAttributes
 
 			$functionNetbiosIdentity = invoke-command -ScriptBlock {get-AdGroup -identity $args[0] -properties $args[1] } -ArgumentList $functionGroupSamAccountName,"msDS-PrincipalName" -Session $script:onPremisesADDomainControllerPowerShellSession
 
-			Write-LogInfo -LogPath $script:sLogFile -Message $functionNetbiosIdentity -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $functionNetbiosIdentity.msDs-PrincipalName -toscreen
 
 			foreach ( $loopGroup in $functionAllGroups)
 			{
-				$functionPermissions = get-AdPermission -identity $loopGroup.identity | where {($_.user -eq $functionNetbiosIdentity) -and ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and -not ($_.User -like "NT AUTHORITY\SELF")}
+				$functionPermissions = get-AdPermission -identity $loopGroup.identity | where {($_.user -eq $functionNetbiosIdentity.msDs-PrincipalNamey) -and ($_.ExtendedRights -like "*Send-As*") -and ($_.IsInherited -eq $false) -and -not ($_.User -like "NT AUTHORITY\SELF")}
 
 				foreach ($permission in $functionPermissions)
 				{
@@ -6300,7 +6300,7 @@ Function resetOriginalDistributionListSettings
 					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding send as to the new mail user..... ' -ToScreen
 					Write-LogInfo -LogPath $script:sLogFile $member.identity -ToScreen
 					
-					add-adPermission -identity $member.identity -user $functionUserNetbiosName -accessRights ExtendedRights -extendedRights "Send AS"
+					add-adPermission -identity $member.identity -user $functionUserNetbiosName.msDS-PrincipalName -accessRights ExtendedRights -extendedRights "Send AS"
 				}
 				Catch
 				{
