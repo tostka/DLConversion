@@ -5009,6 +5009,8 @@ Function recordOriginalMultivaluedAttributes
 
 				foreach ($permission in $functionPermissions)
 				{
+					Write-LogInfo -LogPath $script:sLogFile -Message $permission.identity -toscreen	
+					Write-LogInfo -LogPath $script:sLogFile -Message $permission.user -toscreen	
 					$script:originalSendAs+=$permission
 				}
 			}
@@ -6280,15 +6282,15 @@ Function resetOriginalDistributionListSettings
 
 					Write-LogInfo -LogPath $script:sLogFile -Message 'Getting MS-DS name for the new mail contact..... ' -ToScreen
 
-					$functionUserNetbiosName = invoke-command -ScriptBlock { get-adUser -identity $args[0] -properties $args[1]} -ArgumentList $script:onPremisesNewContactConfiguration.identity,"msDS-PrincipalName" -Session $script:onPremisesADDomainControllerPowerShellSession 
+					$functionUserNetbiosName = invoke-command -ScriptBlock { get-adUser -identity $args[0] -properties $args[1]} -ArgumentList $script:onPremisesNewContactConfiguration.distinguishedName,"msDS-PrincipalName" -Session $script:onPremisesADDomainControllerPowerShellSession 
 					
-					Write-LogInfo -LogPath $script:sLogFile '$functionUserNetbiosName.msDS-principalName' -ToScreen
+					Write-LogInfo -LogPath $script:sLogFile -message '$functionUserNetbiosName.msDS-principalName' -ToScreen
 				}
 				Catch
 				{
 					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
 					cleanupSessions
-					Stop-Log -LogPath $script:sLogFile -ToScreen
+					Stop-Log -LogPath $script:sLogFile -ToScreendi
 					archiveFiles
 					Break
 				}
