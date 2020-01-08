@@ -6300,7 +6300,7 @@ Function resetOriginalDistributionListSettings
 					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding send as to the new mail user..... ' -ToScreen
 					Write-LogInfo -LogPath $script:sLogFile $member.identity -ToScreen
 					
-					add-adPermission -identity $member.identity -user '$functionUserNetbiosName.msDS-PrincipalName' -accessRights ExtendedRights -extendedRights "Send AS"
+					add-adPermission -identity $member.identity -user '$functionUserNetbiosName.msDS-PrincipalName' -extendedRights "Send As"
 				}
 				Catch
 				{
