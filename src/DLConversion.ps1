@@ -7228,6 +7228,32 @@ if ( $script:onpremisesdlConfiguration.ManagedBy -ne $NULL )
 	}
 }
 
+if ( $script:onPremisesDLSendAsMembers -ne $NULL )
+{
+    buildMembershipArray ( "SendAs" ) ( "onpremisesdlconfigurationSendAsArray" ) ( $ignoreInvalidManagedByMember )
+    
+    if ( $script:onPremisesDLSendAsMembers.count -gt $script:refreshPowerShellSessionCounter )
+	{
+		refreshOffice365PowerShellSession #Refreshing the session here since building the membership array can take a while depending on array size.
+	}
+
+	$script:arrayCounter=0
+
+	foreach ($member in $script:onPremisesDLSendAsMembers )
+	{
+		testOffice365Recipient ($member.PrimarySMTPAddressOrUPN) ($member.RecipientorUser)
+
+		if ( ( $member.recipientType -eq "MailUniversalSecurityGroup" ) -or ($member.recipientType -eq "MailUniversalDistributionGroup") )
+		{
+			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
+		}
+
+		$script:onpremisesdlconfigurationManagedByArray[$script:arrayCounter].GUID = $script:arrayGUID
+
+		$script:arrayCounter+=1
+	}
+}
+
 Write-LogInfo -logpath $script:sLogFile -Message "Begin processing a ModeratedBy array." -ToScreen
 
 if ( $script:onpremisesdlConfiguration.ModeratedBy -ne $NULL )
