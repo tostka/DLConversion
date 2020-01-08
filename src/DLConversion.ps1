@@ -3544,12 +3544,12 @@ Function buildMembershipArray
 				#This approach was taken becuase the attributes are stored in DN format on premises - and may not reflect a mail enabled object.
 				#Managed by can be edited directly through AD and may contain non-mail enabled objects.
 
-                if ( Get-Recipient -identity $member.identity -errorAction SilentlyContinue )
+                if ( Get-Recipient -identity $member.user -errorAction SilentlyContinue )
                 {
 					Write-LogInfo -LogPath $script:sLogFile -Message "Processing Send As member:" -ToScreen
-					Write-LogInfo -LogPath $script:sLogFile -Message $member -ToScreen
+					Write-LogInfo -LogPath $script:sLogFile -Message $member.user -ToScreen
 
-					$functionRecipient = get-recipient -identity $member.identity
+					$functionRecipient = get-recipient -identity $member.user
 
 					if ( $functionRecipient.CustomAttribute1 -eq "MigratedByScript")
 					{
@@ -3665,6 +3665,7 @@ Function buildMembershipArray
 		}
 		elseif ($arrayName -eq "onPremisesDLSendAsMembers")
 		{
+			$script:onPremisesDLSendAsMembers = $NULL
 			$script:onPremisesDLSendAsMembers = $functionOutput
 
 			foreach ( $member in $script:onPremisesDLSendAsMembers )
@@ -4575,6 +4576,10 @@ Function setOffice365DistributionlistMultivaluedAttributes
 				archiveFiles
 				Break
 			}
+		}
+		elseif ( $operationType -eq "SendAsMembers" )
+		{
+			add-o365RecipientPermission -identity $script:onpremisesdlConfiguration.primarySMTPAddress -Trustee $PrimarySMTPAddressOrUPN -AccessRights SendAs -confirm:$FALSE
 		}
 	}
 	End 
@@ -7230,7 +7235,7 @@ if ( $script:onpremisesdlConfiguration.ManagedBy -ne $NULL )
 
 if ( $script:onPremisesDLSendAsMembers -ne $NULL )
 {
-    buildMembershipArray ( "SendAs" ) ( "onpremisesdlconfigurationSendAsArray" ) ( $ignoreInvalidManagedByMember )
+    buildMembershipArray ( "SendAs" ) ( "onPremisesDLSendAsMembers" ) ( $ignoreInvalidManagedByMember )
     
     if ( $script:onPremisesDLSendAsMembers.count -gt $script:refreshPowerShellSessionCounter )
 	{
@@ -7248,7 +7253,7 @@ if ( $script:onPremisesDLSendAsMembers -ne $NULL )
 			testOffice365GroupMigrated ($member.PrimarySMTPAddressOrUPN)
 		}
 
-		$script:onpremisesdlconfigurationManagedByArray[$script:arrayCounter].GUID = $script:arrayGUID
+		$script:onPremisesDLSendAsMembers[$script:arrayCounter].GUID = $script:arrayGUID
 
 		$script:arrayCounter+=1
 	}
@@ -7572,6 +7577,17 @@ if ( $script:onPremsiesDLBypassModerationFromSendersOrMembers -ne $NULL )
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
 		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
 		setOffice365DistributionlistMultivaluedAttributes ( "BypassModerationFromSendersOrMembers" ) ( $member.GUID  )
+	}
+}
+
+if ( $script:onPremisesDLSendAsMembers -ne $NULL )
+{
+	foreach ($member in $script:onPremisesDLSendAsMembers )
+	{
+		Write-Loginfo -LogPath $script:sLogFile -Message "Processing Send As to Office 365..." -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -toscreen
+		Write-LogInfo -LogPath $script:sLogFile -Message $member.GUID -toscreen
+		setOffice365DistributionlistMultivaluedAttributes ( "SendAsMembers" ) ( $member.GUID  )
 	}
 }
 
