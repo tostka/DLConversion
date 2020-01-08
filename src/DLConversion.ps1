@@ -3536,7 +3536,7 @@ Function buildMembershipArray
 
 		#Operation type is send as array.
 
-        elseif ( $operationType -eq "SendAs"  )
+        elseif ( $operationType -eq "SendAs" )
         {
             foreach ( $member in $functionArray )
             {
@@ -3662,7 +3662,17 @@ Function buildMembershipArray
                 Write-LogInfo -LogPath $script:sLogFile -Message 'The following SMTP address was added to the array:' -ToScreen
                 Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -ToScreen 
             }
-        }
+		}
+		elseif ($arrayName -eq "onPremisesDLSendAsMembers")
+		{
+			$script:onPremisesDLSendAsMembers = $functionOutput
+
+			foreach ( $member in $script:onPremisesDLSendAsMembers )
+            {
+                Write-LogInfo -LogPath $script:sLogFile -Message 'The following SMTP address was added to the array:' -ToScreen
+                Write-LogInfo -LogPath $script:sLogFile -Message $member.PrimarySMTPAddressOrUPN -ToScreen 
+            }
+		}
         elseif ($arrayName -eq "onpremisesdlconfigurationManagedByArray")
         {
 			$script:onpremisesdlconfigurationManagedByArray = $functionOutput
