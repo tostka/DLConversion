@@ -6270,6 +6270,12 @@ Function resetOriginalDistributionListSettings
 
 			$functionArray = $script:originalSendAs
 
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Getting MS-DS name for the new mail contact..... ' -ToScreen
+
+			$functionUserNetbiosName = invoke-command -ScriptBlock { get-adUser -identity $args[0] -properties $args[1]} -ArgumentList $script:onPremisesNewContactConfiguration.distinguishedName,"msDS-PrincipalName" -Session $script:onPremisesADDomainControllerPowerShellSession 
+					
+			Write-LogInfo -LogPath $script:sLogFile -message $functionUserNetbiosName.'msDS-principalName' -ToScreen
+
 			foreach ( $member in $functionArray )
             {
 				#Get the distribution list that had the group originall on bypass full bypass list to a variable.
@@ -6278,31 +6284,12 @@ Function resetOriginalDistributionListSettings
 				Write-LogInfo -LogPath $script:sLogFile $member.user -ToScreen
 				Try
 				{
-					#Get the MS-DSname of the new mail contact that we'll add as send as..
-
-					Write-LogInfo -LogPath $script:sLogFile -Message 'Getting MS-DS name for the new mail contact..... ' -ToScreen
-
-					$functionUserNetbiosName = invoke-command -ScriptBlock { get-adUser -identity $args[0] -properties $args[1]} -ArgumentList $script:onPremisesNewContactConfiguration.distinguishedName,"msDS-PrincipalName" -Session $script:onPremisesADDomainControllerPowerShellSession 
-					
-					Write-LogInfo -LogPath $script:sLogFile -message '$functionUserNetbiosName.msDS-principalName' -ToScreen
-				}
-				Catch
-				{
-					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
-					cleanupSessions
-					Stop-Log -LogPath $script:sLogFile -ToScreendi
-					archiveFiles
-					Break
-				}
-
-				Try
-				{
 					#Set the forwarding address of the mailbox.
 
 					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding send as to the new mail user..... ' -ToScreen
 					Write-LogInfo -LogPath $script:sLogFile $member.identity -ToScreen
 					
-					add-adPermission -identity $member.identity -user '$functionUserNetbiosName.msDS-PrincipalName' -extendedRights "Send As"
+					add-adPermission -identity $member.identity -user $functionUserNetbiosName.'msDS-PrincipalName' -extendedRights "Send As"
 				}
 				Catch
 				{
@@ -7083,6 +7070,16 @@ Function recordOriginalO365MultivaluedAttributes
 					Write-LogInfo -LogPath $script:sLogFile -Message $functionGroup.primarySMTPAddress -ToScreen
 					$script:originalO365BypassModerationFromSendersOrMembers+=$functionGroup
 				}
+
+				$functionPermissions = get-o365recipientPermission -identity $fixedFunctionGroupIdentity
+
+				foreach ( $permission in $functionPermissions )
+				{
+					if ( $permission.trustee -eq $functionGroup.primarySMTPAddress)
+					{
+						$script:originalO365SendAs+=$permission
+					}
+				}
 			}	
 		}
 		Catch 
@@ -7199,6 +7196,30 @@ Function recordOriginalO365MultivaluedAttributes
 					$script:originalO365GroupRejectMessagesFromDLMembers+=$functionGroup
 				}
 			}	
+		}
+		Catch 
+		{
+			Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+			cleanupSessions
+			Stop-Log -LogPath $script:sLogFile -ToScreen
+			archiveFiles
+			Break
+		}
+		Try 
+		{
+			#Iterate through all office 365 groups locating those that have grant send on behalf to set to the identity.
+
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all send as for unified groups...' -toscreen
+
+			$functionPermissions = get-o365recipientPermission -identity $fixedFunctionGroupIdentity
+
+			foreach ( $permission in $functionPermissions )
+			{
+				if ( $permission.trustee -eq $functionGroup.primarySMTPAddress)
+				{
+					$script:originalO365SendAs+=$permission
+				}
+			}
 		}
 		Catch 
 		{
