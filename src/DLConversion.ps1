@@ -6985,6 +6985,7 @@ Function recordOriginalO365MultivaluedAttributes
 		$fixedFunctionGroupIdentity = $($functionGroupIdentity.replace("'","''"))
 		$functionGroupForwardingIdentity = ConvertFrom-DN -DistinguishedName $script:office365DLConfiguration.distinguishedName
 		$functionFixedGroupForwardingIdentity = $($functionGroupForwardingIdentity.replace("'","''"))
+		$functionTestSMTPAddress = $script:office365DLConfiguration.primarySMTPAddress
 		$functionCommand = $NULL	#Holds the expression that we will be executing to determine multi-valued membership.
 		$functionRecipientObject = $NULL
 		[array]$functionAllCloudOnlyGroups = $NULL
@@ -7071,13 +7072,22 @@ Function recordOriginalO365MultivaluedAttributes
 					$script:originalO365BypassModerationFromSendersOrMembers+=$functionGroup
 				}
 
-				$functionPermissions = get-o365recipientPermission -identity $fixedFunctionGroupIdentity
+				$functionPermissions = get-o365recipientPermission -identity $functionGroup.identity
 
 				foreach ( $permission in $functionPermissions )
 				{
-					if ( $permission.trustee -eq $functionGroup.primarySMTPAddress)
+					if ( $permission.AccessRights -like "*SendAS*")
 					{
-						$script:originalO365SendAs+=$permission
+						$functionTestRecipient = get-o365recipient -identity $permission.trustee
+						
+						if ($functionTestRecipient.primarySMTPAddress -eq $functionTestSMTPAddress)
+						{
+							Write-LogInfo -LogPath $script:sLogFile -Message "Send as permission located" -ToScreen
+							Write-LogInfo -LogPath $script:sLogFile -Message $permission.identity -ToScreen
+							Write-LogInfo -LogPath $script:sLogFile -Message $permission.accessrights -ToScreen
+							Write-LogInfo -LogPath $script:sLogFile -Message $permission.trustee -ToScreen
+							$script:originalO365SendAs+=$permission
+						}
 					}
 				}
 			}	
@@ -7211,13 +7221,22 @@ Function recordOriginalO365MultivaluedAttributes
 
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Gather all send as for unified groups...' -toscreen
 
-			$functionPermissions = get-o365recipientPermission -identity $fixedFunctionGroupIdentity
-
-			foreach ( $permission in $functionPermissions )
+			foreach ( $functionGroup in $functionAllOffice365Groups )
 			{
-				if ( $permission.trustee -eq $functionGroup.primarySMTPAddress)
+				$functionPermissions = get-o365recipientPermission -identity $functionGroup.identity
+
+				foreach ( $permission in $functionPermissions )
 				{
-					$script:originalO365SendAs+=$permission
+					if ( $permission.AccessRights -like "*SendAS*")
+					{
+						$functionTestRecipient = get-o365recipient -identity $permission.trustee
+
+						if ($functionTestRecipient.primarySMTPAddress -eq $functionTestSMTPAddress)
+						{
+							Write-LogInfo -LogPath $script:sLogFile -Message $permission -ToScreen
+							$script:originalO365SendAs+=$permission
+						}
+					}
 				}
 			}
 		}
