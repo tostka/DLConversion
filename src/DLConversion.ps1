@@ -7230,14 +7230,16 @@ Function recordOriginalO365MultivaluedAttributes
 					if ( $permission.AccessRights -like "*SendAS*")
 					{
 						$functionTestRecipient = get-o365recipient -identity $permission.trustee
-
+						
 						if ($functionTestRecipient.primarySMTPAddress -eq $functionTestSMTPAddress)
 						{
-							Write-LogInfo -LogPath $script:sLogFile -Message $permission -ToScreen
+							Write-LogInfo -LogPath $script:sLogFile -Message "Send as permission located" -ToScreen
+							Write-LogInfo -LogPath $script:sLogFile -Message $permission.identity -ToScreen
+							Write-LogInfo -LogPath $script:sLogFile -Message $permission.accessrights -ToScreen
+							Write-LogInfo -LogPath $script:sLogFile -Message $permission.trustee -ToScreen
 							$script:originalO365SendAs+=$permission
 						}
 					}
-				}
 			}
 		}
 		Catch 
