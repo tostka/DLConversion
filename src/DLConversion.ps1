@@ -5404,12 +5404,15 @@ Function createAndUpdateMailOnMicrosoftAddress
 		foreach ( $emailAddress in $functionEmailAddresses)
 		{
 			Write-LogInfo -LogPath $script:sLogFile -Message 'Iterating through proxy addresses to find onmicrosoft.com address...' -toscreen
+			Write-LogInfo -LogPath $script:sLogFile -Message $emailAddress -toscreen
 
 			if ( $emailAddress -like "*.onmicrosoft.com" )
 			{
 				Write-LogInfo -LogPath $script:sLogFile -Message 'The onmicrosoft.com address has been found...' -toscreen
 
 				$functionContactRemoteAddress=$emailAddress
+
+				Write-LogInfo -LogPath $script:sLogFile -Message $functionContactRemoteAddress=$emailAddress -toscreen
 			}
 		}
 
@@ -7240,6 +7243,7 @@ Function recordOriginalO365MultivaluedAttributes
 							$script:originalO365SendAs+=$permission
 						}
 					}
+				}
 			}
 		}
 		Catch 
