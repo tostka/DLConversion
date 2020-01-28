@@ -4617,7 +4617,7 @@ Function setOffice365DistributionlistMultivaluedAttributes
 		}
 		elseif ( $operationType -eq "SendAsMembers" )
 		{
-			add-o365RecipientPermission -identity $script:onpremisesdlConfiguration.primarySMTPAddress -Trustee $PrimarySMTPAddressOrUPN -AccessRights SendAs -confirm:$FALSE
+			add-o365RecipientPermission -identity $script:onpremisesdlConfiguration.primarySMTPAddress -Trustee $PrimarySMTPAddressOrUPN -AccessRights SendAs -SkipDomainValidationForMailContact -SkipDomainValidationForMailUser -SkipDomainValidationForSharedMailbox -confirm:$FALSE
 		}
 	}
 	End 
@@ -6920,6 +6920,38 @@ Function resetCloudDistributionListSettings
 						archiveFiles
 						Break
 					}
+				}
+            }
+		}
+		$functionCounter=0
+
+		if ( $script:originalO365SendAs -ne $NULL ) 
+        {
+			#The converted DL had send as rights to other groups - reset those groups to the migrated DL.
+
+			Write-LogInfo -LogPath $script:sLogFile -Message 'Processing send as on Office 365 DLs and Groups...' -toscreen
+
+			$functionArray = $script:originalO365SendAs
+
+            foreach ( $member in $functionArray )
+            {
+				Write-LogInfo -LogPath $script:sLogFile -Message 'Adding send as to '$member.identity -toscreen
+				Write-LogInfo -LogPath $script:sLogFile -Message 'The user added '$member.trustee -toscreen
+				Write-LogInfo -LogPath $script:sLogFile $member.primarySMTPAddress -ToScreen
+
+				Try
+				{
+					Write-LogInfo -LogPath $script:sLogFile -Message 'Adding send as permissions... ' -ToScreen
+				
+					add-o365RecipientPermission -identity $member.identity -trustee $member.trustee -AccessRights "SendAs" -SkipDomainValidationForMailContact -SkipDomainValidationForMailUser -SkipDomainValidationForSharedMailbox -confirm:$FALSE
+				}
+				Catch
+				{
+					Write-LogError -LogPath $script:sLogFile -Message $_.Exception -toscreen
+					cleanupSessions
+					Stop-Log -LogPath $script:sLogFile -ToScreen
+					archiveFiles
+					Break
 				}
             }
 		}
